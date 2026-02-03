@@ -25,6 +25,24 @@ func validateOptions(options *types.Options) error {
 		return errkit.New("no inputs specified for crawler")
 	}
 
+	// Validate page load strategy
+	if options.PageLoadStrategy != "" {
+		validStrategies := []string{"heuristic", "load", "domcontentloaded", "networkidle", "none"}
+		valid := false
+		for _, s := range validStrategies {
+			if options.PageLoadStrategy == s {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return errkit.New("invalid page-load-strategy: must be one of (heuristic, load, domcontentloaded, networkidle, none)")
+		}
+	} else {
+		// Default to heuristic
+		options.PageLoadStrategy = "heuristic"
+	}
+
 	// Disabling automatic form fill (-aff) for headless navigation due to incorrect implementation.
 	// Form filling should be handled via headless actions within the page context
 	if options.HeadlessHybrid && options.AutomaticFormFill {
@@ -38,10 +56,12 @@ func validateOptions(options *types.Options) error {
 	}
 	
 	// Warn if -headless is used with -cwu (Chrome WebSocket URL)
-	// The ChromeWSUrl takes precedence and hybrid engine will be used
+	// The ChromeWSUrl takes precedence and pure headless engine will be used
 	if options.Headless && options.ChromeWSUrl != "" {
-		gologger.Warning().Msgf("Using -cwu with existing browser session. The -headless flag is ignored.")
+		gologger.Warning().Msgf("Using -cwu with existing browser session. The -headless flag is redundant.")
 		gologger.Info().Msgf("Connecting to Chrome at: %s", options.ChromeWSUrl)
+	} else if options.ChromeWSUrl != "" {
+		gologger.Info().Msgf("Connecting to Chrome at: %s (using pure headless engine)", options.ChromeWSUrl)
 	}
 	
 	if (options.HeadlessOptionalArguments != nil || options.HeadlessNoSandbox || options.SystemChromePath != "") &&
