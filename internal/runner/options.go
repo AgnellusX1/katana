@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/projectdiscovery/gologger"
@@ -28,14 +29,7 @@ func validateOptions(options *types.Options) error {
 	// Validate page load strategy
 	if options.PageLoadStrategy != "" {
 		validStrategies := []string{"heuristic", "load", "domcontentloaded", "networkidle", "none"}
-		valid := false
-		for _, s := range validStrategies {
-			if options.PageLoadStrategy == s {
-				valid = true
-				break
-			}
-		}
-		if !valid {
+		if !slices.Contains(validStrategies, options.PageLoadStrategy) {
 			return errkit.New("invalid page-load-strategy: must be one of (heuristic, load, domcontentloaded, networkidle, none)")
 		}
 	} else {

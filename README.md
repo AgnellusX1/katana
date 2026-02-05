@@ -157,6 +157,8 @@ HEADLESS:
    -noi, -no-incognito               start headless chrome without incognito mode
    -cwu, -chrome-ws-url string       use chrome browser instance launched elsewhere with the debugger listening at this URL
    -xhr, -xhr-extraction             extract xhr request url,method in jsonl output
+   -pls, -page-load-strategy string  page load strategy (heuristic, load, domcontentloaded, networkidle, none) (default "heuristic")
+   -dwt, -dom-wait-time int          time in seconds to wait after page load when using domcontentloaded strategy (default 5)
 
 SCOPE:
    -cs, -crawl-scope string[]       in scope url regex to be followed by crawler
@@ -330,6 +332,8 @@ HEADLESS:
    -noi, -no-incognito               start headless chrome without incognito mode
    -cwu, -chrome-ws-url string       use chrome browser instance launched elsewhere with the debugger listening at this URL
    -xhr, -xhr-extraction             extract xhr requests
+   -pls, -page-load-strategy string  page load strategy (heuristic, load, domcontentloaded, networkidle, none) (default "heuristic")
+   -dwt, -dom-wait-time int          time in seconds to wait after page load when using domcontentloaded strategy (default 5)
 ```
 
 *`-no-sandbox`*
@@ -358,6 +362,34 @@ When crawling in headless mode, additional chrome options can be specified using
 
 ```console
 katana -u https://tesla.com -headless -system-chrome -headless-options --disable-gpu,proxy-server=http://127.0.0.1:8080
+```
+
+*`-page-load-strategy`*
+----
+
+Controls how katana waits for pages to load in headless mode. Different strategies are useful for different types of web applications:
+
+| Strategy | Description |
+|----------|-------------|
+| `heuristic` | (default) Smart waiting that adapts to page behavior - waits for load event, network idle, and DOM stability |
+| `load` | Waits only for the browser's load event |
+| `domcontentloaded` | Waits for DOMContentLoaded event plus additional time (configurable via `-dwt`) for JavaScript rendering |
+| `networkidle` | Waits for network activity to stop |
+| `none` | No waiting - returns immediately after navigation starts |
+
+```console
+katana -u https://tesla.com -headless -pls domcontentloaded
+```
+
+The `domcontentloaded` strategy is particularly useful for Single Page Applications (SPAs) that never fully complete loading due to continuous background requests (websockets, polling, etc.).
+
+*`-dom-wait-time`*
+----
+
+When using the `domcontentloaded` page load strategy, this option specifies how many seconds to wait after the DOMContentLoaded event fires. This allows time for JavaScript to render interactive elements. Default is 5 seconds.
+
+```console
+katana -u https://tesla.com -headless -pls domcontentloaded -dwt 10
 ```
 
 
