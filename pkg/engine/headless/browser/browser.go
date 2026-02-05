@@ -221,10 +221,15 @@ func (b *BrowserPage) WaitPageLoadHeurisitics() error {
 		return chained.WaitLoad()
 		
 	case "domcontentloaded":
-		// For apps that never finish loading, wait a configurable fixed period
-		// This gives the DOM and JavaScript time to render interactive elements
-		waitTime := time.Duration(b.launcher.opts.DOMWaitTime) * time.Second
-		time.Sleep(waitTime)
+		// Wait for the DOMContentLoaded event, then optionally wait additional time
+		// for JavaScript to render interactive elements
+		chained := b.Timeout(15 * time.Second)
+		wait := chained.WaitNavigation(proto.PageLifecycleEventNameDOMContentLoaded)
+		wait()
+		// Additional wait time for JS rendering after DOMContentLoaded
+		if b.launcher.opts.DOMWaitTime > 0 {
+			time.Sleep(time.Duration(b.launcher.opts.DOMWaitTime) * time.Second)
+		}
 		return nil
 		
 	case "networkidle":

@@ -55,11 +55,14 @@ func validateOptions(options *types.Options) error {
 		return errkit.New("flags -hl (headless) and -hh (hybrid) are mutually exclusive")
 	}
 	
-// Warn if -headless is used with -cwu (Chrome WebSocket URL)
+// Warn if -headless or -hh is used with -cwu (Chrome WebSocket URL)
 	// The ChromeWSUrl takes precedence and pure headless engine will be used
 	if options.Headless && options.ChromeWSUrl != "" {
 		gologger.Warning().Msgf("Using -cwu with existing browser session. The -headless flag is redundant.")
 		gologger.Info().Msgf("Connecting to Chrome at: %s", options.ChromeWSUrl)
+	} else if options.HeadlessHybrid && options.ChromeWSUrl != "" {
+		gologger.Warning().Msgf("Using -cwu forces pure headless engine. The -hh (hybrid) flag will be ignored.")
+		gologger.Info().Msgf("Connecting to Chrome at: %s (using pure headless engine)", options.ChromeWSUrl)
 	} else if options.ChromeWSUrl != "" {
 		gologger.Info().Msgf("Connecting to Chrome at: %s (using pure headless engine)", options.ChromeWSUrl)
 	}

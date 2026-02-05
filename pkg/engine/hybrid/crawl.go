@@ -224,9 +224,10 @@ func (c *Crawler) navigateRequest(s *common.CrawlSession, request *navigation.Re
 		gologger.Debug().Msgf("page-load-strategy=none: skipping stability wait\n")
 		
 	case "domcontentloaded":
-		// Just wait a brief fixed period for DOM to render
-		gologger.Debug().Msgf("page-load-strategy=domcontentloaded: waiting 1s for DOM\n")
-		time.Sleep(1 * time.Second)
+		// Wait for DOM to render using the configured wait time
+		waitTime := time.Duration(c.Options.Options.DOMWaitTime) * time.Second
+		gologger.Debug().Msgf("page-load-strategy=domcontentloaded: waiting %s for DOM\n", waitTime)
+		time.Sleep(waitTime)
 		
 	case "load":
 		// Wait for load event but don't check network stability
