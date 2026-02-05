@@ -93,7 +93,7 @@ func New(options *types.Options) (*Runner, error) {
 	var crawler engine.Engine
 
 	switch {
-	case options.ChromeWSUrl != "":
+case options.ChromeWSUrl != "":
 		// When connecting to existing browser via WebSocket URL,
 		// use pure headless engine with advanced crawling features
 		crawler, err = headless.New(crawlerOptions)
