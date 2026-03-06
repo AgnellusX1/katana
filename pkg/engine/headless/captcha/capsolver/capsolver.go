@@ -92,8 +92,8 @@ type getTaskResultRequest struct {
 
 type getTaskResultResponse struct {
 	ErrorID          int            `json:"errorId"`
-	ErrorCode        string `json:"errorCode"`
-	ErrorDescription string `json:"errorDescription"`
+	ErrorCode        string         `json:"errorCode"`
+	ErrorDescription string         `json:"errorDescription"`
 	Status           string         `json:"status"`
 	Solution         map[string]any `json:"solution"`
 }
@@ -117,7 +117,9 @@ func (s *Solver) createTask(ctx context.Context, task map[string]any) (string, e
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -180,7 +182,9 @@ func (s *Solver) getTaskResult(ctx context.Context, taskID string) (*getTaskResu
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -56,10 +56,10 @@ func (a *Action) String() string {
 	var builder strings.Builder
 	builder.WriteString(string(a.Type))
 	if a.Type == ActionTypeLoadURL {
-		builder.WriteString(fmt.Sprintf(" %s", a.Input))
+		_, _ = fmt.Fprintf(&builder, " %s", a.Input)
 	}
 	if a.Element != nil {
-		builder.WriteString(fmt.Sprintf(" on %s", a.Element))
+		_, _ = fmt.Fprintf(&builder, " on %s", a.Element)
 	}
 	value := builder.String()
 	return value
@@ -149,14 +149,14 @@ func (e *HTMLElement) String() string {
 	var builder strings.Builder
 	builder.WriteString(e.TagName)
 	if e.ID != "" {
-		builder.WriteString(fmt.Sprintf("#%s", e.ID))
+		_, _ = fmt.Fprintf(&builder, "#%s", e.ID)
 	}
 	if e.Classes != "" {
-		builder.WriteString(fmt.Sprintf(".%s", e.Classes))
+		_, _ = fmt.Fprintf(&builder, ".%s", e.Classes)
 	}
 	if e.TextContent != "" {
 		trimmedContent := strings.Trim(e.TextContent, " \n\r\t")
-		builder.WriteString(fmt.Sprintf(" (%s)", trimmedContent))
+		_, _ = fmt.Fprintf(&builder, " (%s)", trimmedContent)
 	}
 	value := builder.String()
 	return value
