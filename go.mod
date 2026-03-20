@@ -1,6 +1,6 @@
 module github.com/projectdiscovery/katana
 
-go 1.25.0
+go 1.25.7
 
 require (
 	github.com/Mzack9999/jsluice v0.0.0-20260306161058-30114a312f98
@@ -8,6 +8,7 @@ require (
 	github.com/adrianbrad/queue v1.3.0
 	github.com/dominikbraun/graph v0.23.0
 	github.com/go-rod/rod v0.116.2
+	github.com/happyhackingspace/dit v0.0.14
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/json-iterator/go v1.1.12
 	github.com/lmittmann/tint v1.0.6

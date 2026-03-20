@@ -117,9 +117,7 @@ func (s *Solver) createTask(ctx context.Context, task map[string]any) (string, e
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -182,9 +180,7 @@ func (s *Solver) getTaskResult(ctx context.Context, taskID string) (*getTaskResu
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
