@@ -19,14 +19,17 @@ func setupBrowserTest(t *testing.T) (*rod.Browser, *rod.Page) {
 		t.Skip("chrome/chromium not found, skipping browser test")
 	}
 
-	u := launcher.New().Leakless(true).MustLaunch()
+	u, err := launcher.New().Leakless(true).Launch()
+	if err != nil {
+		t.Skipf("could not launch browser: %v", err)
+	}
 	browser := rod.New().ControlURL(u).MustConnect()
 	t.Cleanup(func() { browser.MustClose() })
 
 	page := browser.MustPage()
 	t.Cleanup(func() { page.MustClose() })
 
-	err := page.Navigate("about:blank")
+	err = page.Navigate("about:blank")
 	require.NoError(t, err)
 	page.MustWaitLoad()
 
