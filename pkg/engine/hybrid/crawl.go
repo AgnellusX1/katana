@@ -204,8 +204,21 @@ func (c *Crawler) navigateRequest(s *common.CrawlSession, request *navigation.Re
 	})
 	go waitFrameEvents()
 
-	// wait the page to be fully loaded and becoming idle
-	waitNavigation := page.WaitNavigation(proto.PageLifecycleEventNameFirstMeaningfulPaint)
+	// Arm the lifecycle listener before navigate so the event is not missed.
+	// Which event we wait for depends on the page-load strategy.
+	strategy := c.Options.Options.PageLoadStrategy
+
+	var waitNavigation func()
+	switch strategy {
+	case "none":
+		// no lifecycle wait
+	case "domcontentloaded":
+		waitNavigation = page.WaitNavigation(proto.PageLifecycleEventNameDOMContentLoaded)
+	case "load":
+		waitNavigation = page.WaitNavigation(proto.PageLifecycleEventNameLoad)
+	default:
+		waitNavigation = page.WaitNavigation(proto.PageLifecycleEventNameFirstMeaningfulPaint)
+	}
 
 	err = page.Navigate(request.URL)
 	if err != nil {
@@ -215,29 +228,27 @@ func (c *Crawler) navigateRequest(s *common.CrawlSession, request *navigation.Re
 		return nil, errkit.Wrap(err, "hybrid: could not navigate target")
 	}
 
-	waitNavigation()
+	if waitNavigation != nil {
+		waitNavigation()
+	}
 
-	// Wait the page to be stable a duration based on page load strategy
-	strategy := c.Options.Options.PageLoadStrategy
-	
+	// Post-navigation stability wait, strategy-specific
 	switch strategy {
 	case "none":
-		// Don't wait at all
 		gologger.Debug().Msgf("page-load-strategy=none: skipping stability wait\n")
-		
+
 	case "domcontentloaded":
-		// Wait for DOM to render using the configured wait time
 		waitTime := time.Duration(c.Options.Options.DOMWaitTime) * time.Second
 		gologger.Debug().Msgf("page-load-strategy=domcontentloaded: waiting %s for DOM\n", waitTime)
-		time.Sleep(waitTime)
-		
+		if waitTime > 0 {
+			time.Sleep(waitTime)
+		}
+
 	case "load":
-		// Wait for load event but don't check network stability
 		gologger.Debug().Msgf("page-load-strategy=load: basic load wait only\n")
 		time.Sleep(500 * time.Millisecond)
-		
+
 	default:
-		// heuristic, networkidle, or any other strategy: use WaitStable
 		timeStable := time.Duration(c.Options.Options.TimeStable) * time.Second
 
 		if timeout < timeStable {

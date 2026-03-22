@@ -69,7 +69,6 @@ func NewLauncher(opts LauncherOptions) (*Launcher, error) {
 		opts.PageLoadStrategy = "heuristic"
 	}
 	
-	// Default DOM wait time if not specified
 	if opts.DOMWaitTime <= 0 {
 		opts.DOMWaitTime = 5
 	}
@@ -225,12 +224,10 @@ func (b *BrowserPage) WaitPageLoadHeurisitics() error {
 		return chained.WaitLoad()
 		
 	case "domcontentloaded":
-		// Wait for the DOMContentLoaded event, then optionally wait additional time
-		// for JavaScript to render interactive elements
+		// WaitLoad checks document.readyState via JS, so it's safe to call
+		// after Navigate() has already started (no race with missed events).
 		chained := b.Timeout(15 * time.Second)
-		wait := chained.WaitNavigation(proto.PageLifecycleEventNameDOMContentLoaded)
-		wait()
-		// Additional wait time for JS rendering after DOMContentLoaded
+		_ = chained.WaitLoad()
 		if b.launcher.opts.DOMWaitTime > 0 {
 			time.Sleep(time.Duration(b.launcher.opts.DOMWaitTime) * time.Second)
 		}
@@ -383,9 +380,11 @@ func (l *Launcher) createBrowserPageFunc() (*BrowserPage, error) {
 	defer func() {
 		if !successfulPageCreation {
 			_ = page.Close()
-			// Only close browser if we launched it (not connecting via ChromeWSUrl)
 			if l.opts.ChromeWSUrl == "" {
 				_ = browser.Close()
+			}
+			if shouldCleanupTempDir {
+				_ = os.RemoveAll(tempDir)
 			}
 		}
 	}()
