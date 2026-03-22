@@ -175,7 +175,7 @@ FILTER:
    -fr, -filter-regex string[]            regex or list of regex to filter on output url (cli, file)
    -f, -field string                      field to display in output (url,path,fqdn,rdn,rurl,qurl,qpath,file,ufile,key,value,kv,dir,udir) (Deprecated: use -output-template instead)
    -sf, -store-field string               field to store in per-host output (url,path,fqdn,rdn,rurl,qurl,qpath,file,ufile,key,value,kv,dir,udir)
-   -em, -extension-match string[]         match output for given extension (eg, -em php,html,js)
+   -em, -extension-match string[]         match output for given extension (eg, -em php,html,js,none)
    -ef, -extension-filter string[]        filter output for given extension (eg, -ef png,css)
    -ndef, -no-default-ext-filter bool     remove default extensions from the filter list
    -mdc, -match-condition string          match response with dsl based condition
@@ -781,6 +781,12 @@ Crawl output can be easily matched for specific extension using `-em` option to 
 katana -u https://tesla.com -silent -em js,jsp,json
 ```
 
+Use the special value `none` to also include URLs without a file extension in the output:
+
+```
+katana -u https://tesla.com -silent -em js,jsp,json,none
+```
+
 *`-extension-filter`*
 ---
 
@@ -847,7 +853,7 @@ FILTER:
    -fr, -filter-regex string[]            regex or list of regex to filter on output url (cli, file)
    -f, -field string                      field to display in output (url,path,fqdn,rdn,rurl,qurl,qpath,file,ufile,key,value,kv,dir,udir)
    -sf, -store-field string               field to store in per-host output (url,path,fqdn,rdn,rurl,qurl,qpath,file,ufile,key,value,kv,dir,udir)
-   -em, -extension-match string[]         match output for given extension (eg, -em php,html,js)
+   -em, -extension-match string[]         match output for given extension (eg, -em php,html,js,none)
    -ef, -extension-filter string[]        filter output for given extension (eg, -ef png,css)
    -ndef, -no-default-ext-filter bool     remove default extensions from the filter list
    -mdc, -match-condition string          match response with dsl based condition

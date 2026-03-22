@@ -212,7 +212,7 @@ pipelines offering both headless and non-headless crawling.`)
 		flagSet.StringSliceVarP(&options.OutputFilterRegex, "filter-regex", "fr", nil, "regex or list of regex to filter on output url (cli, file)", goflags.FileStringSliceOptions),
 		flagSet.StringVarP(&options.Fields, "field", "f", "", fmt.Sprintf("field to display in output (%s) (Deprecated: use -output-template instead)", availableFields)),
 		flagSet.StringVarP(&options.StoreFields, "store-field", "sf", "", fmt.Sprintf("field to store in per-host output (%s)", availableFields)),
-		flagSet.StringSliceVarP(&options.ExtensionsMatch, "extension-match", "em", nil, "match output for given extension (eg, -em php,html,js)", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.ExtensionsMatch, "extension-match", "em", nil, "match output for given extension (eg, -em php,html,js,none)", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.ExtensionFilter, "extension-filter", "ef", nil, "filter output for given extension (eg, -ef png,css)", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.NoDefaultExtFilter, "no-default-ext-filter", "ndef", false, "remove default extensions from the filter list"),
 		flagSet.StringVarP(&options.OutputMatchCondition, "match-condition", "mdc", "", "match response with dsl based condition"),
