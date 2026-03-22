@@ -22,7 +22,7 @@ func startSPAServer(t *testing.T) string {
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, `<!DOCTYPE html>
+		_, _ = fmt.Fprint(w, `<!DOCTYPE html>
 <html>
 <head><title>SPA Test</title></head>
 <body>
@@ -30,9 +30,8 @@ func startSPAServer(t *testing.T) string {
   <a href="/page2">Page 2</a>
   <a href="/api/data">API</a>
   <script>
-    // Simulate continuous network activity (analytics, WebSocket-like polling)
     const evtSource = new EventSource("/stream");
-    evtSource.onmessage = function(e) { /* keep-alive */ };
+    evtSource.onmessage = function(e) {};
   </script>
 </body>
 </html>`)
@@ -51,21 +50,21 @@ func startSPAServer(t *testing.T) string {
 			case <-r.Context().Done():
 				return
 			case <-time.After(500 * time.Millisecond):
-				fmt.Fprintf(w, "data: keepalive\n\n")
+				_, _ = fmt.Fprintf(w, "data: keepalive\n\n")
 				flusher.Flush()
 			}
 		}
 	})
 
 	mux.HandleFunc("/page1", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `<html><body><a href="/page3">Page 3</a></body></html>`)
+		_, _ = fmt.Fprint(w, `<html><body><a href="/page3">Page 3</a></body></html>`)
 	})
 	mux.HandleFunc("/page2", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `<html><body>Page 2</body></html>`)
+		_, _ = fmt.Fprint(w, `<html><body>Page 2</body></html>`)
 	})
 	mux.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"status":"ok"}`)
+		_, _ = fmt.Fprint(w, `{"status":"ok"}`)
 	})
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
