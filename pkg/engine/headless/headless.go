@@ -120,6 +120,9 @@ func (h *Headless) Crawl(URL string) error {
 		PageMaxTimeout:    30 * time.Second,
 		ScopeValidator:    scopeValidator,
 		AutomaticFormFill: h.options.Options.AutomaticFormFill,
+		PageLoadStrategy:  h.options.Options.PageLoadStrategy,
+		ChromeWSUrl:       h.options.Options.ChromeWSUrl,
+		DOMWaitTime:       h.options.Options.DOMWaitTime,
 		RequestCallback: func(rr *output.Result) {
 			if rr == nil || rr.Request == nil {
 				return

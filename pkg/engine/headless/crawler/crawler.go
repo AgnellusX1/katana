@@ -51,6 +51,9 @@ type Options struct {
 	Trace               bool
 	CookieConsentBypass bool
 	AutomaticFormFill   bool
+	PageLoadStrategy    string
+	ChromeWSUrl         string
+	DOMWaitTime         int
 
 	// EnableDiagnostics enables the diagnostics mode
 	// which writes diagnostic information to a directory
@@ -101,6 +104,9 @@ func New(opts Options) (*Crawler, error) {
 		Trace:               opts.Trace,
 		CookieConsentBypass: opts.CookieConsentBypass,
 		NoSandbox:           opts.NoSandbox,
+		PageLoadStrategy:    opts.PageLoadStrategy,
+		ChromeWSUrl:         opts.ChromeWSUrl,
+		DOMWaitTime:         opts.DOMWaitTime,
 		Proxy:               opts.Proxy,
 	})
 	if err != nil {
