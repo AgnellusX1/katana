@@ -91,6 +91,7 @@ func readCustomFormConfig(formConfig string) error {
 	if err := yaml.NewDecoder(file).Decode(&data); err != nil {
 		return errkit.Wrap(err, "could not decode form config")
 	}
+	data.Resolve()
 	utils.FormData = data
 	return nil
 }
