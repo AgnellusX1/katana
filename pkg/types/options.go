@@ -174,6 +174,12 @@ type Options struct {
 	DisableUpdateCheck bool
 	//IgnoreQueryParams ignore crawling same path with different query-param values
 	IgnoreQueryParams bool
+	// FilterSimilar filters crawling of similar looking URLs
+	// by normalizing variable path segments (IDs, UUIDs, hashes, dates)
+	FilterSimilar bool
+	// FilterSimilarThreshold is the number of distinct values at a path position
+	// before it is treated as a parameter (default 10, lower = more aggressive)
+	FilterSimilarThreshold int
 	// Debug
 	Debug bool
 	// TlsImpersonate enables experimental tls ClientHello randomization for standard crawler
@@ -187,9 +193,15 @@ type Options struct {
 	// MaxOnclickLinks is the maximum number of onclick links to process per page (default: 10)
 	MaxOnclickLinks int
 	// PageLoadStrategy specifies how to wait for pages to load (heuristic, load, domcontentloaded, networkidle, none)
-	PageLoadStrategy string
+	PageLoadStrategy      string
 	// DOMWaitTime is the time in seconds to wait after domcontentloaded strategy (default: 5)
-	DOMWaitTime int
+	DOMWaitTime           int
+	CaptchaSolverProvider string
+	CaptchaSolverAPIKey   string
+	// KnowledgeBase enables knowledge base classification using dit
+	KnowledgeBase bool
+	// FilterPageType filters results by page type
+	FilterPageType goflags.StringSlice
 }
 
 func (options *Options) ParseCustomHeaders() map[string]string {
