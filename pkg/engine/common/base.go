@@ -97,10 +97,11 @@ func (s *Shared) Enqueue(queue *queue.Queue, navigationRequests ...*navigation.R
 			reqUrl = utils.FingerprintURL(reqUrl, s.PathTrie)
 		}
 
-		// Skip adding to the crawl queue when the maximum depth is exceeded.
-		// Must be done before checking uniqueness to avoid caching item that will be skipped
-		// to handle them if faced on lower depth via another path.
+		// When maximum depth is exceeded, output discovered URLs without enqueuing
+		// them for visiting. Uniqueness is intentionally not consumed here so that
+		// URLs can still be visited if later discovered at a valid depth via another path.
 		if nr.Depth > s.Options.Options.MaxDepth {
+			s.Output(nr, nil, ErrMaxDepthReached)
 			continue
 		}
 
