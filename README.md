@@ -577,6 +577,17 @@ Automatic form filling is experimental feature.
 katana -u https://tesla.com -aff
 ```
 
+Form config values support DSL helper functions for dynamic data generation. All `rand_*` functions from the [projectdiscovery/dsl](https://github.com/projectdiscovery/dsl) library are available:
+
+```yaml
+# $HOME/.config/katana/form-config.yaml
+email: "rand_email()"
+phone: "rand_phone()"
+placeholder: "rand_first_name()"
+password: 'rand_base(16, "")'
+color: "#e66465"
+```
+
 *`-filter-similar`*
 ----
 
