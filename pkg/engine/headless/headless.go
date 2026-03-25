@@ -126,6 +126,16 @@ func (h *Headless) Crawl(URL string) error {
 			if scopeValidator != nil && !scopeValidator(rr.Request.URL) {
 				return
 			}
+
+			// Register the real (intercepted) request URL before parsing the
+			// response body for additional discoveries. This ensures that real
+			// results with full response data always take priority over
+			// synthetic Request-only entries produced by performAdditionalAnalysis.
+			isUnique := h.isUniqueURL(rr.Request.URL)
+
+			// Always run additional analysis regardless of uniqueness so we
+			// don't miss URL discoveries embedded in a response body that the
+			// browser happened to fetch more than once.
 			navigationRequests := h.performAdditionalAnalysis(rr)
 			for _, req := range navigationRequests {
 				if err := h.options.OutputWriter.Write(req); err != nil {
@@ -140,8 +150,8 @@ func (h *Headless) Crawl(URL string) error {
 					)
 				}
 			}
-			
-			if !h.isUniqueURL(rr.Request.URL) {
+
+			if !isUnique {
 				return
 			}
 
