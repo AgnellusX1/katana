@@ -16,15 +16,13 @@ import (
 	"github.com/projectdiscovery/katana/pkg/output"
 	"github.com/projectdiscovery/katana/pkg/types"
 	"github.com/projectdiscovery/katana/pkg/utils"
-	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 type Headless struct {
 	logger  *slog.Logger
 	options *types.CrawlerOptions
 
-	deduplicator *mapsutil.SyncLockMap[string, struct{}]
-	pathTrie     *utils.PathTrie
+	pathTrie *utils.PathTrie
 
 	debugger *CrawlDebugger
 }
@@ -36,8 +34,6 @@ func New(options *types.CrawlerOptions) (*Headless, error) {
 	headless := &Headless{
 		logger:  logger,
 		options: options,
-
-		deduplicator: mapsutil.NewSyncLockMap[string, struct{}](),
 	}
 	if options.Options.FilterSimilar {
 		headless.pathTrie = utils.NewPathTrie(options.Options.FilterSimilarThreshold)
@@ -144,6 +140,10 @@ func (h *Headless) Crawl(URL string) error {
 					)
 				}
 			}
+			
+			if !h.isUniqueURL(rr.Request.URL) {
+				return
+			}
 
 			if rr.Response != nil {
 				rr.Response.KnowledgeBase = h.options.ClassifyPage(rr.Response.Body)
@@ -194,27 +194,26 @@ func (h *Headless) Close() error {
 	return nil
 }
 
+func (h *Headless) isUniqueURL(rawURL string) bool {
+	dedupKey := rawURL
+	if h.options.Options.IgnoreQueryParams {
+		dedupKey = utils.ReplaceAllQueryParam(dedupKey, "")
+	}
+	if h.options.Options.FilterSimilar {
+		dedupKey = utils.FingerprintURL(dedupKey, h.pathTrie)
+	}
+	return h.options.UniqueFilter.UniqueURL(dedupKey)
+}
+
 func (h *Headless) performAdditionalAnalysis(rr *output.Result) []*output.Result {
 	responseParser := parser.NewResponseParser()
 	newNavigations := responseParser.ParseResponse(rr.Response)
 
 	navigationRequests := make([]*output.Result, 0)
 	for _, resp := range newNavigations {
-		dedupKey := resp.URL
-		if h.options.Options.FilterSimilar {
-			dedupKey = utils.FingerprintURL(dedupKey, h.pathTrie)
-		}
-		if _, ok := h.deduplicator.Get(dedupKey); ok {
+		if !h.isUniqueURL(resp.URL) {
 			continue
 		}
-		if err := h.deduplicator.Set(dedupKey, struct{}{}); err != nil {
-			h.logger.Debug("deduplicator set failed",
-				slog.String("url", resp.URL),
-				slog.String("error", err.Error()),
-			)
-			continue
-		}
-
 		navigationRequests = append(navigationRequests, &output.Result{
 			Request: resp,
 		})
