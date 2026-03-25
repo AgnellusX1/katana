@@ -30,7 +30,7 @@ func NewTestServer() (*TestServer, error) {
 			return
 		}
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `<!DOCTYPE html>
+		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
 <html>
 <head><title>Test Home</title></head>
 <body>
@@ -44,7 +44,7 @@ func NewTestServer() (*TestServer, error) {
 
 	mux.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `<!DOCTYPE html>
+		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
 <html>
 <head><title>About</title></head>
 <body>
@@ -56,7 +56,7 @@ func NewTestServer() (*TestServer, error) {
 
 	mux.HandleFunc("/contact", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `<!DOCTYPE html>
+		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
 <html>
 <head><title>Contact</title></head>
 <body>
@@ -71,7 +71,7 @@ func NewTestServer() (*TestServer, error) {
 
 	mux.HandleFunc("/blog", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `<!DOCTYPE html>
+		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
 <html>
 <head><title>Blog</title></head>
 <body>
@@ -84,7 +84,7 @@ func NewTestServer() (*TestServer, error) {
 
 	mux.HandleFunc("/blog/post-1", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `<!DOCTYPE html>
+		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
 <html><head><title>Post 1</title></head>
 <body><a href="%s/blog">Back to Blog</a></body>
 </html>`, baseURL)
@@ -92,7 +92,7 @@ func NewTestServer() (*TestServer, error) {
 
 	mux.HandleFunc("/blog/post-2", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `<!DOCTYPE html>
+		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
 <html><head><title>Post 2</title></head>
 <body><a href="%s/blog">Back to Blog</a></body>
 </html>`, baseURL)
@@ -100,7 +100,7 @@ func NewTestServer() (*TestServer, error) {
 
 	mux.HandleFunc("/team", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `<!DOCTYPE html>
+		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
 <html><head><title>Team</title></head>
 <body><a href="%s/about">About</a></body>
 </html>`, baseURL)
@@ -108,18 +108,18 @@ func NewTestServer() (*TestServer, error) {
 
 	mux.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, `<!DOCTYPE html><html><head><title>Thanks</title></head><body>OK</body></html>`)
+		_, _ = fmt.Fprint(w, `<!DOCTYPE html><html><head><title>Thanks</title></head><body>OK</body></html>`)
 	})
 
 	mux.HandleFunc("/static/app.js", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/javascript")
-		fmt.Fprintf(w, `// app.js
+		_, _ = fmt.Fprintf(w, `// app.js
 fetch("%s/api/data").then(r => r.json());`, baseURL)
 	})
 
 	mux.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"status":"ok"}`)
+		_, _ = fmt.Fprint(w, `{"status":"ok"}`)
 	})
 
 	go func() {

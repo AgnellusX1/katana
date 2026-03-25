@@ -35,7 +35,9 @@ func runFunctionalTests() error {
 	if err != nil {
 		return fmt.Errorf("could not start test server: %w", err)
 	}
-	defer server.Close()
+	defer func() {
+		_ = server.Close()
+	}()
 
 	fmt.Printf("Test server started at %s\n", server.URL)
 
