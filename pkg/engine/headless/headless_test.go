@@ -105,6 +105,7 @@ func TestPerformAdditionalAnalysisDedups(t *testing.T) {
 		<a href="https://example.com/link1">Link 1</a>
 		<a href="https://example.com/link2">Link 2</a>
 		<a href="https://example.com/link1">Link 1 again</a>
+		<a href="https://example.com/page">Self</a>
 	</body></html>`
 
 	pageURL := "https://example.com/page"
@@ -118,17 +119,16 @@ func TestPerformAdditionalAnalysisDedups(t *testing.T) {
 
 	results := h.performAdditionalAnalysis(rr)
 
-	urls := make(map[string]bool)
+	// Count occurrences to verify dedup actually works (a map would hide duplicates).
+	counts := make(map[string]int)
 	for _, r := range results {
-		urls[r.Request.URL] = true
+		counts[r.Request.URL]++
 	}
-	require.True(t, urls["https://example.com/link1"], "link1 should be discovered")
-	require.True(t, urls["https://example.com/link2"], "link2 should be discovered")
-
-	// The real request URL (page) was already registered, so it should not
-	// appear in additional analysis results if the page self-references.
-	require.False(t, urls["https://example.com/page"],
-		"page URL should not appear in additional analysis since the real request already registered it")
+	require.Equal(t, 1, counts["https://example.com/link1"], "link1 should appear exactly once")
+	require.Equal(t, 1, counts["https://example.com/link2"], "link2 should appear exactly once")
+	require.Equal(t, 0, counts["https://example.com/page"],
+		"self-referencing page URL should be filtered since the real request already registered it")
+	require.Len(t, results, 2, "only the two unique non-page links should be returned")
 }
 
 func TestAdditionalAnalysisStillRunsForDuplicateRequests(t *testing.T) {
