@@ -111,6 +111,8 @@ func (h *Headless) Crawl(URL string) error {
 		MaxCrawlDuration:  h.options.Options.CrawlDuration,
 		MaxFailureCount:   h.options.Options.MaxFailureCount,
 		NoSandbox:         h.options.Options.HeadlessNoSandbox,
+		NoIncognito:       h.options.Options.HeadlessNoIncognito,
+		UserDataDir:       h.options.Options.ChromeDataDir,
 		Proxy:             h.options.Options.Proxy,
 		MaxBrowsers:       1,
 		PageMaxTimeout:    30 * time.Second,

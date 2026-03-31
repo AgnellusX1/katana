@@ -44,6 +44,7 @@ type Options struct {
 	MaxDepth            int
 	PageMaxTimeout      time.Duration
 	NoSandbox           bool
+	NoIncognito         bool
 	ShowBrowser         bool
 	SlowMotion          bool
 	MaxCrawlDuration    time.Duration
@@ -54,6 +55,7 @@ type Options struct {
 	PageLoadStrategy    string
 	ChromeWSUrl         string
 	DOMWaitTime         int
+	UserDataDir         string
 
 	// EnableDiagnostics enables the diagnostics mode
 	// which writes diagnostic information to a directory
@@ -104,9 +106,11 @@ func New(opts Options) (*Crawler, error) {
 		Trace:               opts.Trace,
 		CookieConsentBypass: opts.CookieConsentBypass,
 		NoSandbox:           opts.NoSandbox,
+		NoIncognito:         opts.NoIncognito,
 		PageLoadStrategy:    opts.PageLoadStrategy,
 		ChromeWSUrl:         opts.ChromeWSUrl,
 		DOMWaitTime:         opts.DOMWaitTime,
+		UserDataDir:         opts.UserDataDir,
 		Proxy:               opts.Proxy,
 	})
 	if err != nil {
