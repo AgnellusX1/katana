@@ -87,6 +87,27 @@ func (l *Launcher) ScopeValidator() ScopeValidator {
 	return l.opts.ScopeValidator
 }
 
+func (l *Launcher) shouldUseIncognito() bool {
+	return !l.opts.NoIncognito
+}
+
+func (l *Launcher) shouldSkipHeadlessFlag(flagName string) bool {
+	if l.opts.UserDataDir == "" || !l.opts.NoIncognito {
+		return false
+	}
+
+	switch flagName {
+	case "use-mock-keychain", "password-store", "disable-extensions", "enable-automation":
+		return true
+	default:
+		return false
+	}
+}
+
+func (l *Launcher) shouldPreserveUserDataDir(tempDir string) bool {
+	return tempDir != "" && tempDir == l.opts.UserDataDir
+}
+
 func (l *Launcher) launchBrowserWithDataDir(userDataDir string) (*rod.Browser, error) {
 	var launcherURL string
 	
@@ -108,23 +129,15 @@ func (l *Launcher) launchBrowserWithDataDir(userDataDir string) (*rod.Browser, e
 			Delete("disable-ipc-flooding-protection").
 			Headless(true)
 
-		if !l.opts.NoIncognito {
+		if l.shouldUseIncognito() {
 			chromeLauncher = chromeLauncher.Set("incognito", "true")
-		}
-
-		skipFlags := map[string]bool{}
-		if l.opts.UserDataDir != "" && l.opts.NoIncognito {
-			skipFlags["use-mock-keychain"] = true
-			skipFlags["password-store"] = true
-			skipFlags["disable-extensions"] = true
-			skipFlags["enable-automation"] = true
 		}
 
 		for _, flag := range headlessFlags {
 			splitted := strings.TrimPrefix(flag, "--")
 			values := strings.Split(splitted, "=")
 			flagName := values[0]
-			if skipFlags[flagName] {
+			if l.shouldSkipHeadlessFlag(flagName) {
 				continue
 			}
 			if len(values) == 2 {
@@ -675,7 +688,7 @@ func (b *BrowserPage) CloseBrowserPage() {
 	}
 
 	// Only cleanup temp data dir if we created it (not user-provided)
-	if b.userDataDir != "" && b.userDataDir != b.launcher.opts.UserDataDir {
+	if b.userDataDir != "" && !b.launcher.shouldPreserveUserDataDir(b.userDataDir) {
 		_ = os.RemoveAll(b.userDataDir)
 	}
 }

@@ -1,6 +1,7 @@
 package browser
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -59,5 +60,59 @@ func TestNewLauncherDefaults(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, "ws://localhost:9222/devtools/browser/abc", l.opts.ChromeWSUrl)
+	})
+}
+
+func TestLauncherIncognitoAndProfilePreservation(t *testing.T) {
+	t.Run("incognito remains enabled by default", func(t *testing.T) {
+		l, err := NewLauncher(LauncherOptions{MaxBrowsers: 1})
+		require.NoError(t, err)
+		require.True(t, l.shouldUseIncognito())
+	})
+
+	t.Run("incognito is disabled when requested", func(t *testing.T) {
+		l, err := NewLauncher(LauncherOptions{
+			MaxBrowsers: 1,
+			NoIncognito: true,
+			UserDataDir: "/tmp/profile",
+		})
+		require.NoError(t, err)
+		require.False(t, l.shouldUseIncognito())
+	})
+
+	t.Run("profile preserving mode skips conflicting flags", func(t *testing.T) {
+		l, err := NewLauncher(LauncherOptions{
+			MaxBrowsers: 1,
+			NoIncognito: true,
+			UserDataDir: "/tmp/profile",
+		})
+		require.NoError(t, err)
+
+		for _, flagName := range []string{"use-mock-keychain", "password-store", "disable-extensions", "enable-automation"} {
+			require.True(t, l.shouldSkipHeadlessFlag(flagName), "expected %s to be skipped", flagName)
+		}
+		require.False(t, l.shouldSkipHeadlessFlag("disable-gpu"))
+	})
+
+	t.Run("default mode keeps standard headless flags", func(t *testing.T) {
+		l, err := NewLauncher(LauncherOptions{
+			MaxBrowsers: 1,
+			UserDataDir: "/tmp/profile",
+		})
+		require.NoError(t, err)
+		require.False(t, l.shouldSkipHeadlessFlag("use-mock-keychain"))
+	})
+
+	t.Run("only exact user supplied profile directory is preserved", func(t *testing.T) {
+		profileDir := filepath.Join(t.TempDir(), "profile")
+		l, err := NewLauncher(LauncherOptions{
+			MaxBrowsers: 1,
+			UserDataDir: profileDir,
+		})
+		require.NoError(t, err)
+
+		require.True(t, l.shouldPreserveUserDataDir(profileDir))
+		require.False(t, l.shouldPreserveUserDataDir(filepath.Join(profileDir, "nested")))
+		require.False(t, l.shouldPreserveUserDataDir(""))
 	})
 }
