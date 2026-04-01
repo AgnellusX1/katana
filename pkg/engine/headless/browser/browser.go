@@ -47,6 +47,7 @@ type LauncherOptions struct {
 	PageMaxTimeout      time.Duration
 	ShowBrowser         bool
 	NoSandbox           bool
+	NoIncognito         bool
 	Proxy               string
 	SlowMotion          bool
 	Trace               bool
@@ -54,6 +55,7 @@ type LauncherOptions struct {
 	PageLoadStrategy    string
 	ChromeWSUrl         string // WebSocket URL to connect to existing Chrome
 	DOMWaitTime         int    // Time in seconds to wait for DOM (used with domcontentloaded strategy)
+	UserDataDir         string // User-provided chrome data directory to preserve sessions
 	ChromeUser          *user.User // optional chrome user to use
 
 	ScopeValidator  ScopeValidator
@@ -85,6 +87,27 @@ func (l *Launcher) ScopeValidator() ScopeValidator {
 	return l.opts.ScopeValidator
 }
 
+func (l *Launcher) shouldUseIncognito() bool {
+	return !l.opts.NoIncognito
+}
+
+func (l *Launcher) shouldSkipHeadlessFlag(flagName string) bool {
+	if l.opts.UserDataDir == "" || !l.opts.NoIncognito {
+		return false
+	}
+
+	switch flagName {
+	case "use-mock-keychain", "password-store", "disable-extensions", "enable-automation":
+		return true
+	default:
+		return false
+	}
+}
+
+func (l *Launcher) shouldPreserveUserDataDir(tempDir string) bool {
+	return tempDir != "" && tempDir == l.opts.UserDataDir
+}
+
 func (l *Launcher) launchBrowserWithDataDir(userDataDir string) (*rod.Browser, error) {
 	var launcherURL string
 	
@@ -102,14 +125,21 @@ func (l *Launcher) launchBrowserWithDataDir(userDataDir string) (*rod.Browser, e
 			Set("hide-scrollbars", "true").
 			Set("window-size", fmt.Sprintf("%d,%d", 1080, 1920)).
 			Set("mute-audio", "true").
-			Set("incognito", "true").
 			Delete("use-mock-keychain").
 			Delete("disable-ipc-flooding-protection").
 			Headless(true)
 
+		if l.shouldUseIncognito() {
+			chromeLauncher = chromeLauncher.Set("incognito", "true")
+		}
+
 		for _, flag := range headlessFlags {
 			splitted := strings.TrimPrefix(flag, "--")
 			values := strings.Split(splitted, "=")
+			flagName := values[0]
+			if l.shouldSkipHeadlessFlag(flagName) {
+				continue
+			}
 			if len(values) == 2 {
 				chromeLauncher = chromeLauncher.Set(flags.Flag(values[0]), strings.Split(values[1], ",")...)
 			} else {
@@ -330,8 +360,11 @@ func (l *Launcher) createBrowserPageFunc() (*BrowserPage, error) {
 	shouldCleanupTempDir := false
 	
 	if l.opts.ChromeWSUrl == "" {
-		// Only create temp dir if we're launching our own browser
-		if l.opts.ChromeUser != nil {
+		if l.opts.UserDataDir != "" {
+			// Use user-provided data directory (preserve sessions/cookies)
+			tempDir = l.opts.UserDataDir
+			shouldCleanupTempDir = false
+		} else if l.opts.ChromeUser != nil {
 			var err error
 			tempDir, err = os.MkdirTemp(l.opts.ChromeUser.HomeDir, "chrome-data-*")
 			if err != nil {
@@ -647,15 +680,15 @@ func isBrowserConnected(browser *rod.Browser) bool {
 
 func (b *BrowserPage) CloseBrowserPage() {
 	_ = b.Close() // Close the page/tab
-	
+
 	// Only close the browser if we launched it ourselves (not connecting via ChromeWSUrl)
 	// If ChromeWSUrl was used, we should leave the browser running
 	if b.launcher.opts.ChromeWSUrl == "" {
 		_ = b.Browser.Close()
 	}
-	
-	// Only cleanup temp data dir if we created it
-	if b.userDataDir != "" {
+
+	// Only cleanup temp data dir if we created it (not user-provided)
+	if b.userDataDir != "" && !b.launcher.shouldPreserveUserDataDir(b.userDataDir) {
 		_ = os.RemoveAll(b.userDataDir)
 	}
 }

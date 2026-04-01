@@ -362,6 +362,12 @@ Runs headless chrome browser without incognito mode, useful when using the local
 katana -u https://tesla.com -headless -no-incognito
 ```
 
+To preserve cookies and other browser session data across runs, combine `-no-incognito` with `-chrome-data-dir` so Katana reuses your chosen Chrome profile directory instead of an isolated temporary one.
+
+```console
+katana -u https://tesla.com -headless -no-incognito -chrome-data-dir /tmp/katana-profile
+```
+
 *`-headless-options`*
 ----
 
