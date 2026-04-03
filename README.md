@@ -943,7 +943,7 @@ katana -u https://tesla.com -p 20
 
 *`-rate-limit`*
 -----
-option to use to define max number of request can go out per second.
+Maximum requests per second, applied per host. Each target host gets its own rate limit bucket, so a slow host won't throttle fast ones. Katana also backs off automatically with exponential delay and jitter when a host returns 429 or 503.
 
 ```
 katana -u https://tesla.com -rl 100
@@ -951,7 +951,7 @@ katana -u https://tesla.com -rl 100
 
 *`-rate-limit-minute`*
 -----
-option to use to define max number of request can go out per minute.
+Maximum requests per minute, applied per host.
 
 ```
 katana -u https://tesla.com -rlm 500
