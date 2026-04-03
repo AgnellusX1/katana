@@ -64,6 +64,10 @@ type Options struct {
 	Retries int
 	// RateLimitMinute is the maximum number of requests to send per minute
 	RateLimitMinute int
+	// HostRateLimit is the maximum number of requests to send per second per host
+	HostRateLimit int
+	// HostRateLimitMinute is the maximum number of requests to send per minute per host
+	HostRateLimitMinute int
 	// Concurrency is the number of concurrent crawling goroutines
 	Concurrency int
 	// Parallelism is the number of urls processing goroutines
