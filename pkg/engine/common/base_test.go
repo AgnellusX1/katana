@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"net/http"
 	"sync"
 	"testing"
@@ -47,17 +48,20 @@ func (w *mockWriter) Write(r *output.Result) error {
 }
 func (w *mockWriter) WriteErr(_ *output.Error) error { return nil }
 
-func newTestShared(maxDepth int) (*Shared, *mockWriter) {
+func newTestShared(maxDepth int, opts ...func(*types.Options)) (*Shared, *mockWriter) {
 	writer := &mockWriter{}
 	scopeManager, _ := scope.NewManager(nil, nil, "", true)
 
-	opts := &types.Options{
+	o := &types.Options{
 		MaxDepth: maxDepth,
 		Strategy: "depth-first",
 	}
+	for _, fn := range opts {
+		fn(o)
+	}
 
 	crawlerOpts := &types.CrawlerOptions{
-		Options:             opts,
+		Options:             o,
 		OutputWriter:        writer,
 		UniqueFilter:        newMockFilter(),
 		ScopeManager:        scopeManager,
@@ -151,5 +155,65 @@ func TestEnqueueMaxDepthOutputsDiscoveredURLs(t *testing.T) {
 		require.NotNil(t, item, "same URL at valid depth should still be enqueued after being discovered at max depth")
 		req := item.(*navigation.Request)
 		require.Equal(t, "https://example.com/page", req.URL)
+	})
+}
+
+func TestEnqueueDomainPageBudget(t *testing.T) {
+	withBudget := func(n int) func(*types.Options) {
+		return func(o *types.Options) { o.MaxDomainPages = n }
+	}
+
+	t.Run("URLs within budget are enqueued", func(t *testing.T) {
+		shared, _ := newTestShared(10, withBudget(5))
+		q, _ := queue.New("depth-first", 10)
+
+		shared.Enqueue(q, &navigation.Request{
+			Method: http.MethodGet, URL: "https://example.com/a", Depth: 1, RootHostname: "example.com",
+		})
+
+		require.Equal(t, 1, q.Len())
+	})
+
+	t.Run("URLs beyond budget are dropped", func(t *testing.T) {
+		shared, _ := newTestShared(10, withBudget(2))
+		q, _ := queue.New("depth-first", 10)
+
+		shared.domainCounter("example.com").Store(2)
+
+		shared.Enqueue(q, &navigation.Request{
+			Method: http.MethodGet, URL: "https://example.com/c", Depth: 1, RootHostname: "example.com",
+		})
+
+		require.Equal(t, 0, q.Len())
+	})
+
+	t.Run("budget is per domain", func(t *testing.T) {
+		shared, _ := newTestShared(10, withBudget(1))
+		q, _ := queue.New("depth-first", 10)
+
+		shared.domainCounter("a.com").Store(1)
+
+		shared.Enqueue(q,
+			&navigation.Request{Method: http.MethodGet, URL: "https://a.com/x", Depth: 1, RootHostname: "a.com"},
+			&navigation.Request{Method: http.MethodGet, URL: "https://b.com/y", Depth: 1, RootHostname: "b.com"},
+		)
+
+		require.Equal(t, 1, q.Len())
+		item := <-q.Pop()
+		req := item.(*navigation.Request)
+		require.Equal(t, "https://b.com/y", req.URL)
+	})
+
+	t.Run("zero budget means unlimited", func(t *testing.T) {
+		shared, _ := newTestShared(10)
+		q, _ := queue.New("depth-first", 10)
+
+		for i := range 100 {
+			shared.Enqueue(q, &navigation.Request{
+				Method: http.MethodGet, URL: fmt.Sprintf("https://example.com/%d", i), Depth: 1, RootHostname: "example.com",
+			})
+		}
+
+		require.Equal(t, 100, q.Len())
 	})
 }
