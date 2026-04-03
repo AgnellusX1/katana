@@ -165,7 +165,7 @@ func (c *Crawler) Do(crawlSession *common.CrawlSession, doRequest common.DoReque
 			continue
 		}
 
-		c.Options.RateLimit.Take()
+		_ = c.Options.RateLimit.Take(crawlSession.Hostname)
 
 		if c.Options.Options.Delay > 0 {
 			time.Sleep(time.Duration(c.Options.Options.Delay) * time.Second)

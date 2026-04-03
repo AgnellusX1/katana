@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"math"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -28,12 +32,23 @@ import (
 // Shared represents the shared state and configuration used across all crawl sessions.
 // It maintains common resources like HTTP headers, cookie jars, known files database,
 // and crawler options that are reused for efficiency across multiple crawl operations.
+const (
+	backoffBase    = 1 * time.Second
+	backoffMax     = 30 * time.Second
+	backoffDecayAt = 5
+)
+
+type hostBackoff struct {
+	consecutive atomic.Int32
+}
+
 type Shared struct {
-	Headers    map[string]string
-	KnownFiles *files.KnownFiles
-	Options    *types.CrawlerOptions
-	Jar        *httputil.CookieJar
-	PathTrie   *utils.PathTrie
+	Headers      map[string]string
+	KnownFiles   *files.KnownFiles
+	Options      *types.CrawlerOptions
+	Jar          *httputil.CookieJar
+	PathTrie     *utils.PathTrie
+	hostBackoffs sync.Map
 }
 
 // NewShared creates a new Shared instance with the provided crawler options.
@@ -201,6 +216,29 @@ func (s *Shared) Output(navigationRequest *navigation.Request, navigationRespons
 	}
 }
 
+func (s *Shared) backoffFor(host string) *hostBackoff {
+	val, _ := s.hostBackoffs.LoadOrStore(host, &hostBackoff{})
+	return val.(*hostBackoff)
+}
+
+func (s *Shared) applyBackoff(host string) {
+	b := s.backoffFor(host)
+	n := b.consecutive.Load()
+	if n <= 0 {
+		return
+	}
+	delay := time.Duration(math.Min(
+		float64(backoffBase)*math.Pow(2, float64(n-1)),
+		float64(backoffMax),
+	))
+	jitter := time.Duration(rand.Int64N(int64(delay) / 2))
+	time.Sleep(delay + jitter)
+}
+
+func isThrottled(statusCode int) bool {
+	return statusCode == http.StatusTooManyRequests || statusCode == http.StatusServiceUnavailable
+}
+
 // CrawlSession represents an active crawling session for a specific target URL.
 // It maintains the session context, cancellation function, parsed URL information,
 // the request queue, and HTTP/browser clients needed for the crawl operation.
@@ -342,7 +380,8 @@ func (s *Shared) Do(crawlSession *CrawlSession, doRequest DoRequestFunc) error {
 		go func() {
 			defer wg.Done()
 
-			s.Options.RateLimit.Take()
+			_ = s.Options.RateLimit.Take(crawlSession.Hostname)
+			s.applyBackoff(crawlSession.Hostname)
 
 			// Delay if the user has asked for it
 			if s.Options.Options.Delay > 0 {
@@ -350,6 +389,17 @@ func (s *Shared) Do(crawlSession *CrawlSession, doRequest DoRequestFunc) error {
 			}
 
 			resp, err := doRequest(crawlSession, req)
+
+			if resp != nil && isThrottled(resp.StatusCode) {
+				b := s.backoffFor(crawlSession.Hostname)
+				b.consecutive.Add(1)
+				gologger.Debug().Msgf("Host %s returned %d, backing off", crawlSession.Hostname, resp.StatusCode)
+			} else if resp != nil {
+				b := s.backoffFor(crawlSession.Hostname)
+				if b.consecutive.Load() > 0 {
+					b.consecutive.Add(-1)
+				}
+			}
 
 			if inScope {
 				s.Output(req, resp, err)
