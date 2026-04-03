@@ -143,6 +143,7 @@ CONFIGURATION:
    -tlsi, -tls-impersonate       enable experimental client hello (ja3) tls randomization
    -dr, -disable-redirects       disable following redirects (default false)
    -kb, -knowledge-base          enable knowledge base classification
+   -mdp, -max-domain-pages int   maximum number of pages to crawl per domain (default unlimited)
 
 DEBUG:
    -health-check, -hc        run diagnostic check up
@@ -609,6 +610,15 @@ The promotion threshold (how many distinct values at a path position before it's
 katana -u https://tesla.com -fsu -fst 5
 ```
 
+*`-max-domain-pages`*
+----
+
+Option to limit the number of pages crawled per domain. Prevents any single domain from consuming the entire crawl budget, useful for large sites or crawler trap protection.
+
+```
+katana -u https://tesla.com -mdp 100
+```
+
 ## Authenticated Crawling
 
 Authenticated crawling involves including custom headers or cookies in HTTP requests to access protected resources. These headers provide authentication or authorization information, allowing you to crawl authenticated content / endpoint. You can specify headers directly in the command line or provide them as a file with katana to perform authenticated crawling.
@@ -667,6 +677,7 @@ CONFIGURATION:
    -iqp, -ignore-query-params    Ignore crawling same path with different query-param values
    -fsu, -filter-similar         filter crawling of similar looking URLs (e.g., /users/123 and /users/456)
    -fst, -filter-similar-threshold int  number of distinct values before a path position is treated as parameter (default 10)
+   -mdp, -max-domain-pages int   maximum number of pages to crawl per domain (default unlimited)
 ```
 
 ### Connecting to Active Browser Session
