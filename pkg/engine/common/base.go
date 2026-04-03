@@ -369,7 +369,6 @@ func (s *Shared) Do(crawlSession *CrawlSession, doRequest DoRequestFunc) error {
 			if s.Options.Options.MaxDomainPages > 0 {
 				counter := s.domainCounter(crawlSession.Hostname)
 				if counter.Add(1) > int64(s.Options.Options.MaxDomainPages) {
-					s.Output(req, nil, ErrDomainPageBudgetExhausted)
 					return
 				}
 			}
