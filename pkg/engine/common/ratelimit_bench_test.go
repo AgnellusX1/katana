@@ -25,7 +25,7 @@ func BenchmarkRateLimit_MixedLatencyHosts(b *testing.B) {
 		defer servers[i].Close()
 	}
 
-	b.Run("global", func(b *testing.B) {
+	b.Run("global_limiter", func(b *testing.B) {
 		limiter := ratelimit.New(context.Background(), 150, time.Second)
 		defer limiter.Stop()
 
@@ -45,15 +45,13 @@ func BenchmarkRateLimit_MixedLatencyHosts(b *testing.B) {
 		wg.Wait()
 	})
 
-	b.Run("per-host", func(b *testing.B) {
-		globalLimiter := ratelimit.New(context.Background(), 150, time.Second)
-		hostLimiter := ratelimit.NewAutoLimiter(
+	b.Run("per_host_limiter", func(b *testing.B) {
+		limiter := ratelimit.NewAutoLimiter(
 			context.Background(),
 			ratelimit.WithMaxCount(150),
 			ratelimit.WithDuration(time.Second),
 		)
-		defer globalLimiter.Stop()
-		defer hostLimiter.Stop()
+		defer limiter.Stop()
 
 		b.ResetTimer()
 		var wg sync.WaitGroup
@@ -62,8 +60,7 @@ func BenchmarkRateLimit_MixedLatencyHosts(b *testing.B) {
 			go func() {
 				defer wg.Done()
 				srv := servers[i%len(servers)]
-				globalLimiter.Take()
-				_ = hostLimiter.Take(srv.URL)
+				_ = limiter.Take(srv.URL)
 				resp, err := http.Get(srv.URL)
 				if err == nil {
 					resp.Body.Close()
@@ -95,7 +92,7 @@ func BenchmarkRateLimit_ThrottledHost(b *testing.B) {
 
 	servers := []*httptest.Server{fastServer, throttledServer}
 
-	b.Run("global", func(b *testing.B) {
+	b.Run("global_limiter", func(b *testing.B) {
 		throttleCount.Store(0)
 		limiter := ratelimit.New(context.Background(), 150, time.Second)
 		defer limiter.Stop()
@@ -121,16 +118,14 @@ func BenchmarkRateLimit_ThrottledHost(b *testing.B) {
 		b.ReportMetric(float64(completed.Load()), "successful_reqs")
 	})
 
-	b.Run("per-host+backoff", func(b *testing.B) {
+	b.Run("per_host_limiter_with_backoff", func(b *testing.B) {
 		throttleCount.Store(0)
-		globalLimiter := ratelimit.New(context.Background(), 150, time.Second)
-		hostLimiter := ratelimit.NewAutoLimiter(
+		limiter := ratelimit.NewAutoLimiter(
 			context.Background(),
 			ratelimit.WithMaxCount(150),
 			ratelimit.WithDuration(time.Second),
 		)
-		defer globalLimiter.Stop()
-		defer hostLimiter.Stop()
+		defer limiter.Stop()
 
 		shared := &Shared{}
 		var completed atomic.Int64
@@ -141,8 +136,7 @@ func BenchmarkRateLimit_ThrottledHost(b *testing.B) {
 			go func() {
 				defer wg.Done()
 				srv := servers[i%len(servers)]
-				globalLimiter.Take()
-				_ = hostLimiter.Take(srv.URL)
+				_ = limiter.Take(srv.URL)
 				shared.applyBackoff(srv.URL)
 
 				resp, err := http.Get(srv.URL)
@@ -179,7 +173,7 @@ func BenchmarkRateLimit_MultiHostThroughput(b *testing.B) {
 			defer servers[i].Close()
 		}
 
-		b.Run(fmt.Sprintf("global/hosts=%d", hostCount), func(b *testing.B) {
+		b.Run(fmt.Sprintf("global_limiter/hosts=%d", hostCount), func(b *testing.B) {
 			limiter := ratelimit.New(context.Background(), 150, time.Second)
 			defer limiter.Stop()
 
@@ -199,15 +193,13 @@ func BenchmarkRateLimit_MultiHostThroughput(b *testing.B) {
 			wg.Wait()
 		})
 
-		b.Run(fmt.Sprintf("per-host/hosts=%d", hostCount), func(b *testing.B) {
-			globalLimiter := ratelimit.New(context.Background(), 150, time.Second)
-			hostLimiter := ratelimit.NewAutoLimiter(
+		b.Run(fmt.Sprintf("per_host_limiter/hosts=%d", hostCount), func(b *testing.B) {
+			limiter := ratelimit.NewAutoLimiter(
 				context.Background(),
 				ratelimit.WithMaxCount(150),
 				ratelimit.WithDuration(time.Second),
 			)
-			defer globalLimiter.Stop()
-			defer hostLimiter.Stop()
+			defer limiter.Stop()
 
 			b.ResetTimer()
 			var wg sync.WaitGroup
@@ -216,8 +208,7 @@ func BenchmarkRateLimit_MultiHostThroughput(b *testing.B) {
 				go func() {
 					defer wg.Done()
 					srv := servers[i%hostCount]
-					globalLimiter.Take()
-					_ = hostLimiter.Take(srv.URL)
+					_ = limiter.Take(srv.URL)
 					resp, err := http.Get(srv.URL)
 					if err == nil {
 						resp.Body.Close()
