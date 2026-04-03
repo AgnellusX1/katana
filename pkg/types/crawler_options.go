@@ -24,8 +24,10 @@ import (
 type CrawlerOptions struct {
 	// OutputWriter is the interface for writing output
 	OutputWriter output.Writer
-	// RateLimit is a per-host rate limiter that auto-creates buckets per hostname
-	RateLimit *ratelimit.AutoLimiter
+	// RateLimit is the global rate limiter capping total requests across all hosts
+	RateLimit *ratelimit.Limiter
+	// HostRateLimit is a per-host rate limiter that auto-creates buckets per hostname
+	HostRateLimit *ratelimit.AutoLimiter
 	// Parser is a mechanism for extracting new URLS from responses
 	Parser *parser.Parser
 	// Options contains the user specified configuration options
@@ -139,9 +141,11 @@ func NewCrawlerOptions(options *Options) (*CrawlerOptions, error) {
 	}
 
 	if options.RateLimit > 0 {
-		crawlerOptions.RateLimit = ratelimit.NewAutoLimiter(context.Background(), ratelimit.WithMaxCount(uint(options.RateLimit)), ratelimit.WithDuration(time.Second))
+		crawlerOptions.RateLimit = ratelimit.New(context.Background(), uint(options.RateLimit), time.Second)
+		crawlerOptions.HostRateLimit = ratelimit.NewAutoLimiter(context.Background(), ratelimit.WithMaxCount(uint(options.RateLimit)), ratelimit.WithDuration(time.Second))
 	} else if options.RateLimitMinute > 0 {
-		crawlerOptions.RateLimit = ratelimit.NewAutoLimiter(context.Background(), ratelimit.WithMaxCount(uint(options.RateLimitMinute)), ratelimit.WithDuration(time.Minute))
+		crawlerOptions.RateLimit = ratelimit.New(context.Background(), uint(options.RateLimitMinute), time.Minute)
+		crawlerOptions.HostRateLimit = ratelimit.NewAutoLimiter(context.Background(), ratelimit.WithMaxCount(uint(options.RateLimitMinute)), ratelimit.WithDuration(time.Minute))
 	}
 
 	if options.TechDetect {

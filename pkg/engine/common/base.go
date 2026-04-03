@@ -380,7 +380,8 @@ func (s *Shared) Do(crawlSession *CrawlSession, doRequest DoRequestFunc) error {
 		go func() {
 			defer wg.Done()
 
-			_ = s.Options.RateLimit.Take(crawlSession.Hostname)
+			s.Options.RateLimit.Take()
+			_ = s.Options.HostRateLimit.Take(crawlSession.Hostname)
 			s.applyBackoff(crawlSession.Hostname)
 
 			// Delay if the user has asked for it
