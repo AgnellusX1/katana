@@ -184,7 +184,7 @@ FILTER:
    -mdc, -match-condition string          match response with dsl based condition
    -fdc, -filter-condition string         filter response with dsl based condition
    -duf, -disable-unique-filter           disable duplicate content filtering
-   -fpt, -filter-page-type string[]      filter response with page type (e.g. error,captcha,parked)
+   -filter-page-type string[]      filter response with page type (e.g. error,captcha,parked)
 
 RATE-LIMIT:
    -c, -concurrency int          number of concurrent fetchers to use (default 10)
@@ -199,7 +199,7 @@ UPDATE:
 
 OUTPUT:
    -o, -output string                file to write output to
-   -ot, -output-template string      custom output template
+   -output-template string      custom output template
    -sr, -store-response              store http requests/responses
    -srd, -store-response-dir string  store http requests/responses to custom directory
    -ncb, -no-clobber                 do not overwrite output file
@@ -1106,7 +1106,7 @@ OUTPUT:
    -srd, -store-response-dir string  store http requests/responses to custom directory
    -lof, -list-output-fields         list available fields for jsonl output format
    -eof, -exclude-output-fields      exclude fields from jsonl output
-   -j, -json                         write output in JSONL(ines) format
+   -j, -json                         write output in JSON Lines format
    -nc, -no-color                    disable output content coloring (ANSI escape codes)
    -silent                           display output only
    -v, -verbose                      display verbose output

@@ -110,7 +110,7 @@ func (s *Shared) Enqueue(queue *queue.Queue, navigationRequests ...*navigation.R
 
 		if s.Options.Options.MaxDomainPages > 0 {
 			if domain := nr.RootHostname; domain != "" {
-				counter := s.domainCounter(domain)
+				counter := s.DomainCounter(domain)
 				if counter.Load() >= int64(s.Options.Options.MaxDomainPages) {
 					continue
 				}
@@ -213,7 +213,7 @@ func (s *Shared) Output(navigationRequest *navigation.Request, navigationRespons
 	}
 }
 
-func (s *Shared) domainCounter(domain string) *atomic.Int64 {
+func (s *Shared) DomainCounter(domain string) *atomic.Int64 {
 	val, _ := s.DomainPageCounter.LoadOrStore(domain, &atomic.Int64{})
 	return val.(*atomic.Int64)
 }
@@ -367,7 +367,7 @@ func (s *Shared) Do(crawlSession *CrawlSession, doRequest DoRequestFunc) error {
 			}
 
 			if s.Options.Options.MaxDomainPages > 0 {
-				counter := s.domainCounter(crawlSession.Hostname)
+				counter := s.DomainCounter(crawlSession.Hostname)
 				if counter.Add(1) > int64(s.Options.Options.MaxDomainPages) {
 					return
 				}

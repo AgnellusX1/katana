@@ -178,7 +178,7 @@ func TestEnqueueDomainPageBudget(t *testing.T) {
 		shared, _ := newTestShared(10, withBudget(2))
 		q, _ := queue.New("depth-first", 10)
 
-		shared.domainCounter("example.com").Store(2)
+		shared.DomainCounter("example.com").Store(2)
 
 		shared.Enqueue(q, &navigation.Request{
 			Method: http.MethodGet, URL: "https://example.com/c", Depth: 1, RootHostname: "example.com",
@@ -191,7 +191,7 @@ func TestEnqueueDomainPageBudget(t *testing.T) {
 		shared, _ := newTestShared(10, withBudget(1))
 		q, _ := queue.New("depth-first", 10)
 
-		shared.domainCounter("a.com").Store(1)
+		shared.DomainCounter("a.com").Store(1)
 
 		shared.Enqueue(q,
 			&navigation.Request{Method: http.MethodGet, URL: "https://a.com/x", Depth: 1, RootHostname: "a.com"},
