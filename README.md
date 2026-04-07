@@ -963,7 +963,7 @@ katana -u https://tesla.com -rlm 500
 -----
 Maximum requests per second per host. Each host gets its own rate limit bucket, so a slow host won't throttle fast ones. Replaces the global rate limit when set. Katana also backs off automatically with exponential delay and jitter when a host returns 429 or 503.
 
-```
+```console
 katana -u https://tesla.com -hrl 50
 ```
 
@@ -971,7 +971,7 @@ katana -u https://tesla.com -hrl 50
 -----
 Maximum requests per minute per host.
 
-```
+```console
 katana -u https://tesla.com -hrlm 200
 ```
 

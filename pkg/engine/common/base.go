@@ -8,10 +8,10 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"net/url"
-	"sync"
 	"sync/atomic"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-rod/rod"
 	"github.com/projectdiscovery/gologger"
@@ -33,14 +33,15 @@ import (
 // It maintains common resources like HTTP headers, cookie jars, known files database,
 // and crawler options that are reused for efficiency across multiple crawl operations.
 const (
-	backoffBase    = 1 * time.Second
-	backoffMax     = 30 * time.Second
-	backoffDecayAt = 5
+	backoffBase = 1 * time.Second
+	backoffMax  = 30 * time.Second
 )
 
 type hostBackoff struct {
 	consecutive atomic.Int32
 }
+
+const hostBackoffsCacheSize = 10000
 
 type Shared struct {
 	Headers      map[string]string
@@ -48,16 +49,21 @@ type Shared struct {
 	Options      *types.CrawlerOptions
 	Jar          *httputil.CookieJar
 	PathTrie     *utils.PathTrie
-	hostBackoffs sync.Map
+	hostBackoffs *lru.Cache[string, *hostBackoff]
 }
 
 // NewShared creates a new Shared instance with the provided crawler options.
 // It initializes the HTTP headers, known files database (if configured), and an empty cookie jar.
 // Returns an error if the HTTP client or cookie jar creation fails.
 func NewShared(options *types.CrawlerOptions) (*Shared, error) {
+	backoffCache, err := lru.New[string, *hostBackoff](hostBackoffsCacheSize)
+	if err != nil {
+		return nil, errkit.Wrap(err, "could not create backoff cache")
+	}
 	shared := &Shared{
-		Headers: options.Options.ParseCustomHeaders(),
-		Options: options,
+		Headers:      options.Options.ParseCustomHeaders(),
+		Options:      options,
+		hostBackoffs: backoffCache,
 	}
 	if options.Options.KnownFiles != "" {
 		httpclient, _, err := BuildHttpClient(options.Dialer, options.Options, nil)
@@ -217,11 +223,16 @@ func (s *Shared) Output(navigationRequest *navigation.Request, navigationRespons
 }
 
 func (s *Shared) backoffFor(host string) *hostBackoff {
-	val, _ := s.hostBackoffs.LoadOrStore(host, &hostBackoff{})
-	return val.(*hostBackoff)
+	if val, ok := s.hostBackoffs.Get(host); ok {
+		return val
+	}
+	b := &hostBackoff{}
+	s.hostBackoffs.Add(host, b)
+	return b
 }
 
-func (s *Shared) applyBackoff(host string) {
+// ApplyBackoff sleeps if the host has accumulated throttle signals.
+func (s *Shared) ApplyBackoff(host string) {
 	b := s.backoffFor(host)
 	n := b.consecutive.Load()
 	if n <= 0 {
@@ -235,7 +246,23 @@ func (s *Shared) applyBackoff(host string) {
 	time.Sleep(delay + jitter)
 }
 
-func isThrottled(statusCode int) bool {
+// RecordThrottle increments backoff state for a throttled host.
+func (s *Shared) RecordThrottle(host string, statusCode int) {
+	b := s.backoffFor(host)
+	b.consecutive.Add(1)
+	gologger.Debug().Msgf("Host %s returned %d, backing off", host, statusCode)
+}
+
+// RecordSuccess decrements backoff state on a successful response.
+func (s *Shared) RecordSuccess(host string) {
+	b := s.backoffFor(host)
+	if b.consecutive.Load() > 0 {
+		b.consecutive.Add(-1)
+	}
+}
+
+// IsThrottled returns true if the status code indicates rate limiting.
+func IsThrottled(statusCode int) bool {
 	return statusCode == http.StatusTooManyRequests || statusCode == http.StatusServiceUnavailable
 }
 
@@ -382,10 +409,10 @@ func (s *Shared) Do(crawlSession *CrawlSession, doRequest DoRequestFunc) error {
 
 			if s.Options.HostRateLimit != nil {
 				_ = s.Options.HostRateLimit.Take(crawlSession.Hostname)
-			} else {
+			} else if s.Options.RateLimit != nil {
 				s.Options.RateLimit.Take()
 			}
-			s.applyBackoff(crawlSession.Hostname)
+			s.ApplyBackoff(crawlSession.Hostname)
 
 			// Delay if the user has asked for it
 			if s.Options.Options.Delay > 0 {
@@ -394,15 +421,10 @@ func (s *Shared) Do(crawlSession *CrawlSession, doRequest DoRequestFunc) error {
 
 			resp, err := doRequest(crawlSession, req)
 
-			if resp != nil && isThrottled(resp.StatusCode) {
-				b := s.backoffFor(crawlSession.Hostname)
-				b.consecutive.Add(1)
-				gologger.Debug().Msgf("Host %s returned %d, backing off", crawlSession.Hostname, resp.StatusCode)
+			if resp != nil && IsThrottled(resp.StatusCode) {
+				s.RecordThrottle(crawlSession.Hostname, resp.StatusCode)
 			} else if resp != nil {
-				b := s.backoffFor(crawlSession.Hostname)
-				if b.consecutive.Load() > 0 {
-					b.consecutive.Add(-1)
-				}
+				s.RecordSuccess(crawlSession.Hostname)
 			}
 
 			if inScope {

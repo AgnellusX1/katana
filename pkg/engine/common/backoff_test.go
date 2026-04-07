@@ -3,20 +3,27 @@ package common
 import (
 	"net/http"
 	"testing"
+	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/stretchr/testify/require"
 )
 
+func newTestBackoffCache() *lru.Cache[string, *hostBackoff] {
+	c, _ := lru.New[string, *hostBackoff](100)
+	return c
+}
+
 func TestIsThrottled(t *testing.T) {
-	require.True(t, isThrottled(http.StatusTooManyRequests))
-	require.True(t, isThrottled(http.StatusServiceUnavailable))
-	require.False(t, isThrottled(http.StatusOK))
-	require.False(t, isThrottled(http.StatusNotFound))
-	require.False(t, isThrottled(http.StatusInternalServerError))
+	require.True(t, IsThrottled(http.StatusTooManyRequests))
+	require.True(t, IsThrottled(http.StatusServiceUnavailable))
+	require.False(t, IsThrottled(http.StatusOK))
+	require.False(t, IsThrottled(http.StatusNotFound))
+	require.False(t, IsThrottled(http.StatusInternalServerError))
 }
 
 func TestHostBackoffIncrementsOnThrottle(t *testing.T) {
-	shared := &Shared{}
+	shared := &Shared{hostBackoffs: newTestBackoffCache()}
 
 	b := shared.backoffFor("example.com")
 	require.Equal(t, int32(0), b.consecutive.Load())
@@ -29,7 +36,7 @@ func TestHostBackoffIncrementsOnThrottle(t *testing.T) {
 }
 
 func TestHostBackoffDecaysOnSuccess(t *testing.T) {
-	shared := &Shared{}
+	shared := &Shared{hostBackoffs: newTestBackoffCache()}
 
 	b := shared.backoffFor("example.com")
 	b.consecutive.Store(3)
@@ -39,7 +46,7 @@ func TestHostBackoffDecaysOnSuccess(t *testing.T) {
 }
 
 func TestHostBackoffPerDomain(t *testing.T) {
-	shared := &Shared{}
+	shared := &Shared{hostBackoffs: newTestBackoffCache()}
 
 	a := shared.backoffFor("a.com")
 	b := shared.backoffFor("b.com")
@@ -49,10 +56,11 @@ func TestHostBackoffPerDomain(t *testing.T) {
 }
 
 func TestApplyBackoffNoDelayWhenClean(t *testing.T) {
-	shared := &Shared{}
+	shared := &Shared{hostBackoffs: newTestBackoffCache()}
 
-	start := testing.AllocsPerRun(1, func() {
-		shared.applyBackoff("clean-host.com")
-	})
-	_ = start
+	start := time.Now()
+	shared.ApplyBackoff("clean-host.com")
+	elapsed := time.Since(start)
+
+	require.Less(t, elapsed, 100*time.Millisecond)
 }

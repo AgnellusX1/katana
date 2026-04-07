@@ -167,15 +167,22 @@ func (c *Crawler) Do(crawlSession *common.CrawlSession, doRequest common.DoReque
 
 		if c.Options.HostRateLimit != nil {
 			_ = c.Options.HostRateLimit.Take(crawlSession.Hostname)
-		} else {
+		} else if c.Options.RateLimit != nil {
 			c.Options.RateLimit.Take()
 		}
+		c.ApplyBackoff(crawlSession.Hostname)
 
 		if c.Options.Options.Delay > 0 {
 			time.Sleep(time.Duration(c.Options.Options.Delay) * time.Second)
 		}
 
 		resp, err := doRequest(crawlSession, req)
+
+		if resp != nil && common.IsThrottled(resp.StatusCode) {
+			c.RecordThrottle(crawlSession.Hostname, resp.StatusCode)
+		} else if resp != nil {
+			c.RecordSuccess(crawlSession.Hostname)
+		}
 
 		if inScope {
 			c.Output(req, resp, err)

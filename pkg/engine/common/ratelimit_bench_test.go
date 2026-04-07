@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/projectdiscovery/ratelimit"
 )
 
@@ -17,7 +17,6 @@ func BenchmarkRateLimit_MixedLatencyHosts(b *testing.B) {
 	latencies := []time.Duration{10 * time.Millisecond, 50 * time.Millisecond, 200 * time.Millisecond}
 	servers := make([]*httptest.Server, len(latencies))
 	for i, lat := range latencies {
-		lat := lat
 		servers[i] = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(lat)
 			w.WriteHeader(http.StatusOK)
@@ -29,20 +28,18 @@ func BenchmarkRateLimit_MixedLatencyHosts(b *testing.B) {
 		limiter := ratelimit.New(context.Background(), 150, time.Second)
 		defer limiter.Stop()
 
+		var idx atomic.Int64
 		b.ResetTimer()
-		var wg sync.WaitGroup
-		for i := range b.N {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				i := int(idx.Add(1))
 				limiter.Take()
 				resp, err := http.Get(servers[i%len(servers)].URL)
 				if err == nil {
-					resp.Body.Close()
+					_ = resp.Body.Close()
 				}
-			}()
-		}
-		wg.Wait()
+			}
+		})
 	})
 
 	b.Run("per_host_limiter", func(b *testing.B) {
@@ -53,21 +50,19 @@ func BenchmarkRateLimit_MixedLatencyHosts(b *testing.B) {
 		)
 		defer limiter.Stop()
 
+		var idx atomic.Int64
 		b.ResetTimer()
-		var wg sync.WaitGroup
-		for i := range b.N {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				i := int(idx.Add(1))
 				srv := servers[i%len(servers)]
 				_ = limiter.Take(srv.URL)
 				resp, err := http.Get(srv.URL)
 				if err == nil {
-					resp.Body.Close()
+					_ = resp.Body.Close()
 				}
-			}()
-		}
-		wg.Wait()
+			}
+		})
 	})
 }
 
@@ -98,23 +93,21 @@ func BenchmarkRateLimit_ThrottledHost(b *testing.B) {
 		defer limiter.Stop()
 
 		var completed atomic.Int64
+		var idx atomic.Int64
 		b.ResetTimer()
-		var wg sync.WaitGroup
-		for i := range b.N {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				i := int(idx.Add(1))
 				limiter.Take()
 				resp, err := http.Get(servers[i%len(servers)].URL)
 				if err == nil {
 					if resp.StatusCode == http.StatusOK {
 						completed.Add(1)
 					}
-					resp.Body.Close()
+					_ = resp.Body.Close()
 				}
-			}()
-		}
-		wg.Wait()
+			}
+		})
 		b.ReportMetric(float64(completed.Load()), "successful_reqs")
 	})
 
@@ -127,37 +120,32 @@ func BenchmarkRateLimit_ThrottledHost(b *testing.B) {
 		)
 		defer limiter.Stop()
 
-		shared := &Shared{}
+		backoffCache, _ := lru.New[string, *hostBackoff](100)
+		shared := &Shared{hostBackoffs: backoffCache}
 		var completed atomic.Int64
+		var idx atomic.Int64
 		b.ResetTimer()
-		var wg sync.WaitGroup
-		for i := range b.N {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				i := int(idx.Add(1))
 				srv := servers[i%len(servers)]
 				_ = limiter.Take(srv.URL)
-				shared.applyBackoff(srv.URL)
+				shared.ApplyBackoff(srv.URL)
 
 				resp, err := http.Get(srv.URL)
 				if err == nil {
-					if isThrottled(resp.StatusCode) {
-						bo := shared.backoffFor(srv.URL)
-						bo.consecutive.Add(1)
+					if IsThrottled(resp.StatusCode) {
+						shared.RecordThrottle(srv.URL, resp.StatusCode)
 					} else {
-						bo := shared.backoffFor(srv.URL)
-						if bo.consecutive.Load() > 0 {
-							bo.consecutive.Add(-1)
-						}
+						shared.RecordSuccess(srv.URL)
 						if resp.StatusCode == http.StatusOK {
 							completed.Add(1)
 						}
 					}
-					resp.Body.Close()
+					_ = resp.Body.Close()
 				}
-			}()
-		}
-		wg.Wait()
+			}
+		})
 		b.ReportMetric(float64(completed.Load()), "successful_reqs")
 	})
 }
@@ -177,20 +165,18 @@ func BenchmarkRateLimit_MultiHostThroughput(b *testing.B) {
 			limiter := ratelimit.New(context.Background(), 150, time.Second)
 			defer limiter.Stop()
 
+			var idx atomic.Int64
 			b.ResetTimer()
-			var wg sync.WaitGroup
-			for i := range b.N {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					i := int(idx.Add(1))
 					limiter.Take()
 					resp, err := http.Get(servers[i%hostCount].URL)
 					if err == nil {
-						resp.Body.Close()
+						_ = resp.Body.Close()
 					}
-				}()
-			}
-			wg.Wait()
+				}
+			})
 		})
 
 		b.Run(fmt.Sprintf("per_host_limiter/hosts=%d", hostCount), func(b *testing.B) {
@@ -201,21 +187,19 @@ func BenchmarkRateLimit_MultiHostThroughput(b *testing.B) {
 			)
 			defer limiter.Stop()
 
+			var idx atomic.Int64
 			b.ResetTimer()
-			var wg sync.WaitGroup
-			for i := range b.N {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					i := int(idx.Add(1))
 					srv := servers[i%hostCount]
 					_ = limiter.Take(srv.URL)
 					resp, err := http.Get(srv.URL)
 					if err == nil {
-						resp.Body.Close()
+						_ = resp.Body.Close()
 					}
-				}()
-			}
-			wg.Wait()
+				}
+			})
 		})
 	}
 }
