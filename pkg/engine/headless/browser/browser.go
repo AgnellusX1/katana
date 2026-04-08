@@ -57,6 +57,7 @@ type LauncherOptions struct {
 	DOMWaitTime         int    // Time in seconds to wait for DOM (used with domcontentloaded strategy)
 	UserDataDir         string // User-provided chrome data directory to preserve sessions
 	ChromeUser          *user.User // optional chrome user to use
+	UserArguments       map[string]string // user-supplied Chrome flags via -headless-options
 
 	ScopeValidator  ScopeValidator
 	RequestCallback func(*output.Result)
@@ -165,6 +166,10 @@ func (l *Launcher) launchBrowserWithDataDir(userDataDir string) (*rod.Browser, e
 
 		if userDataDir != "" {
 			chromeLauncher = chromeLauncher.UserDataDir(userDataDir)
+		}
+
+		for k, v := range l.opts.UserArguments {
+			chromeLauncher = chromeLauncher.Set(flags.Flag(k), v)
 		}
 
 		var err error

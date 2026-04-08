@@ -69,6 +69,7 @@ type Options struct {
 	RequestCallback func(*output.Result)
 	ChromeUser      *user.User
 	CaptchaHandler  *captcha.Handler
+	UserArguments   map[string]string
 }
 
 var domNormalizer *normalizer.Normalizer
@@ -112,6 +113,7 @@ func New(opts Options) (*Crawler, error) {
 		DOMWaitTime:         opts.DOMWaitTime,
 		UserDataDir:         opts.UserDataDir,
 		Proxy:               opts.Proxy,
+		UserArguments:       opts.UserArguments,
 	})
 	if err != nil {
 		return nil, err
