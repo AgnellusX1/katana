@@ -198,6 +198,7 @@ pipelines offering both headless and non-headless crawling.`)
 		flagSet.IntVarP(&options.DOMWaitTime, "dom-wait-time", "dwt", 5, "time in seconds to wait after page load when using domcontentloaded strategy"),
 		flagSet.StringVarEnv(&options.CaptchaSolverProvider, "captcha-solver-provider", "csp", "", "CAPTCHA_SOLVER_PROVIDER", "captcha solver provider (e.g. capsolver)"),
 		flagSet.StringVarEnv(&options.CaptchaSolverAPIKey, "captcha-solver-key", "csk", "", "CAPTCHA_SOLVER_KEY", "captcha solver provider api key"),
+		flagSet.StringVarEnv(&options.AuthCredentials, "auto-login", "al", "", "AUTH_CREDENTIALS", "automatic login with username:password (headless only)"),
 	)
 
 	flagSet.CreateGroup("scope", "Scope",

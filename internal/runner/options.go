@@ -61,6 +61,16 @@ func validateOptions(options *types.Options) error {
 		gologger.Info().Msgf("Connecting to Chrome at: %s (using pure headless engine)", options.ChromeWSUrl)
 	}
 
+	if options.AuthCredentials != "" {
+		if !strings.Contains(options.AuthCredentials, ":") {
+			return errkit.New("auth credentials must be in username:password format")
+		}
+		if !options.Headless && !options.HeadlessHybrid {
+			options.Headless = true
+			gologger.Info().Msgf("Headless mode enabled automatically for authenticated crawling.")
+		}
+	}
+
 	if (options.HeadlessOptionalArguments != nil || options.HeadlessNoSandbox || options.SystemChromePath != "") &&
 		!options.Headless && !options.HeadlessHybrid {
 		return errkit.New("headless (-hl) or hybrid (-hh) mode is required if -ho, -nos or -scp are set")

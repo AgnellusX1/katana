@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/lmittmann/tint"
@@ -173,6 +174,15 @@ func (h *Headless) Crawl(URL string) error {
 		EnableDiagnostics:   h.options.Options.EnableDiagnostics,
 		Trace:               h.options.Options.EnableDiagnostics,
 		CookieConsentBypass: true,
+		DitClassifier:      h.options.DitClassifier,
+	}
+
+	if creds := h.options.Options.AuthCredentials; creds != "" {
+		parts := strings.SplitN(creds, ":", 2)
+		crawlOpts.AuthUsername = parts[0]
+		if len(parts) > 1 {
+			crawlOpts.AuthPassword = parts[1]
+		}
 	}
 
 	if provider := h.options.Options.CaptchaSolverProvider; provider != "" {

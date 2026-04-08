@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -95,6 +96,10 @@ func (s *Shared) Enqueue(queue *queue.Queue, navigationRequests ...*navigation.R
 		}
 		if s.Options.Options.FilterSimilar {
 			reqUrl = utils.FingerprintURL(reqUrl, s.PathTrie)
+		}
+
+		if s.Options.Options.AuthCredentials != "" && isLogoutURL(nr.URL) {
+			continue
 		}
 
 		// When maximum depth is exceeded, output discovered URLs without enqueuing
@@ -199,6 +204,12 @@ func (s *Shared) Output(navigationRequest *navigation.Request, navigationRespons
 	if s.Options.Options.OnResult != nil && outputErr == nil {
 		s.Options.Options.OnResult(*result)
 	}
+}
+
+var logoutURLPattern = regexp.MustCompile(`(?i)(log[\s_-]?out|sign[\s_-]?out|signout|deconnexion|cerrar[\s_-]?sesion|sair|abmelden|uitloggen|ausloggen|disconnect|terminate|end[\s_-]?session|salir|desconectar|afmelden|wyloguj|sign[\s_-]?off)`)
+
+func isLogoutURL(rawURL string) bool {
+	return logoutURLPattern.MatchString(rawURL)
 }
 
 // CrawlSession represents an active crawling session for a specific target URL.

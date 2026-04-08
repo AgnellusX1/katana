@@ -202,6 +202,8 @@ type Options struct {
 	KnowledgeBase bool
 	// FilterPageType filters results by page type
 	FilterPageType goflags.StringSlice
+	// AuthCredentials holds username:password for automatic login
+	AuthCredentials string
 }
 
 func (options *Options) ParseCustomHeaders() map[string]string {
