@@ -204,6 +204,8 @@ type Options struct {
 	FilterPageType goflags.StringSlice
 	// AuthCredentials holds username:password for automatic login
 	AuthCredentials string
+	// MaxDomainPages is the maximum number of pages to crawl per domain (0 = unlimited)
+	MaxDomainPages int
 }
 
 func (options *Options) ParseCustomHeaders() map[string]string {

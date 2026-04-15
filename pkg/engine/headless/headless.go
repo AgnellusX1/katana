@@ -174,6 +174,7 @@ func (h *Headless) Crawl(URL string) error {
 		EnableDiagnostics:   h.options.Options.EnableDiagnostics,
 		Trace:               h.options.Options.EnableDiagnostics,
 		CookieConsentBypass: true,
+		UserArguments:       h.options.Options.ParseHeadlessOptionalArguments(),
 		DitClassifier:      h.options.DitClassifier,
 	}
 
