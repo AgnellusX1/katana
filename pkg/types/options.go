@@ -206,6 +206,8 @@ type Options struct {
 	KnowledgeBase bool
 	// FilterPageType filters results by page type
 	FilterPageType goflags.StringSlice
+	// MaxDomainPages is the maximum number of pages to crawl per domain (0 = unlimited)
+	MaxDomainPages int
 }
 
 func (options *Options) ParseCustomHeaders() map[string]string {

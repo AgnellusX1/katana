@@ -143,6 +143,7 @@ CONFIGURATION:
    -tlsi, -tls-impersonate       enable experimental client hello (ja3) tls randomization
    -dr, -disable-redirects       disable following redirects (default false)
    -kb, -knowledge-base          enable knowledge base classification
+   -mdp, -max-domain-pages int   maximum number of pages to crawl per domain (default unlimited)
 
 DEBUG:
    -health-check, -hc        run diagnostic check up
@@ -183,7 +184,7 @@ FILTER:
    -mdc, -match-condition string          match response with dsl based condition
    -fdc, -filter-condition string         filter response with dsl based condition
    -duf, -disable-unique-filter           disable duplicate content filtering
-   -fpt, -filter-page-type string[]      filter response with page type (e.g. error,captcha,parked)
+   -filter-page-type string[]      filter response with page type (e.g. error,captcha,parked)
 
 RATE-LIMIT:
    -c, -concurrency int          number of concurrent fetchers to use (default 10)
@@ -200,7 +201,7 @@ UPDATE:
 
 OUTPUT:
    -o, -output string                file to write output to
-   -ot, -output-template string      custom output template
+   -output-template string      custom output template
    -sr, -store-response              store http requests/responses
    -srd, -store-response-dir string  store http requests/responses to custom directory
    -ncb, -no-clobber                 do not overwrite output file
@@ -611,6 +612,15 @@ The promotion threshold (how many distinct values at a path position before it's
 katana -u https://tesla.com -fsu -fst 5
 ```
 
+*`-max-domain-pages`*
+----
+
+Option to limit the number of pages crawled per domain. Prevents any single domain from consuming the entire crawl budget, useful for large sites or crawler trap protection.
+
+```
+katana -u https://tesla.com -mdp 100
+```
+
 ## Authenticated Crawling
 
 Authenticated crawling involves including custom headers or cookies in HTTP requests to access protected resources. These headers provide authentication or authorization information, allowing you to crawl authenticated content / endpoint. You can specify headers directly in the command line or provide them as a file with katana to perform authenticated crawling.
@@ -669,6 +679,7 @@ CONFIGURATION:
    -iqp, -ignore-query-params    Ignore crawling same path with different query-param values
    -fsu, -filter-similar         filter crawling of similar looking URLs (e.g., /users/123 and /users/456)
    -fst, -filter-similar-threshold int  number of distinct values before a path position is treated as parameter (default 10)
+   -mdp, -max-domain-pages int   maximum number of pages to crawl per domain (default unlimited)
 ```
 
 ### Connecting to Active Browser Session
@@ -1115,7 +1126,7 @@ OUTPUT:
    -srd, -store-response-dir string  store http requests/responses to custom directory
    -lof, -list-output-fields         list available fields for jsonl output format
    -eof, -exclude-output-fields      exclude fields from jsonl output
-   -j, -json                         write output in JSONL(ines) format
+   -j, -json                         write output in JSON Lines format
    -nc, -no-color                    disable output content coloring (ANSI escape codes)
    -silent                           display output only
    -v, -verbose                      display verbose output
