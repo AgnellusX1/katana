@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -29,11 +31,12 @@ import (
 // It maintains common resources like HTTP headers, cookie jars, known files database,
 // and crawler options that are reused for efficiency across multiple crawl operations.
 type Shared struct {
-	Headers    map[string]string
-	KnownFiles *files.KnownFiles
-	Options    *types.CrawlerOptions
-	Jar        *httputil.CookieJar
-	PathTrie   *utils.PathTrie
+	Headers          map[string]string
+	KnownFiles       *files.KnownFiles
+	Options          *types.CrawlerOptions
+	Jar              *httputil.CookieJar
+	PathTrie         *utils.PathTrie
+	DomainPageCounter sync.Map
 }
 
 // NewShared creates a new Shared instance with the provided crawler options.
@@ -103,6 +106,15 @@ func (s *Shared) Enqueue(queue *queue.Queue, navigationRequests ...*navigation.R
 		if nr.Depth > s.Options.Options.MaxDepth {
 			s.Output(nr, nil, ErrMaxDepthReached)
 			continue
+		}
+
+		if s.Options.Options.MaxDomainPages > 0 {
+			if domain := nr.RootHostname; domain != "" {
+				counter := s.DomainCounter(domain)
+				if counter.Load() >= int64(s.Options.Options.MaxDomainPages) {
+					continue
+				}
+			}
 		}
 
 		// Ignore blank URL items and only work on unique items
@@ -199,6 +211,11 @@ func (s *Shared) Output(navigationRequest *navigation.Request, navigationRespons
 	if s.Options.Options.OnResult != nil && outputErr == nil {
 		s.Options.Options.OnResult(*result)
 	}
+}
+
+func (s *Shared) DomainCounter(domain string) *atomic.Int64 {
+	val, _ := s.DomainPageCounter.LoadOrStore(domain, &atomic.Int64{})
+	return val.(*atomic.Int64)
 }
 
 // CrawlSession represents an active crawling session for a specific target URL.
@@ -347,6 +364,13 @@ func (s *Shared) Do(crawlSession *CrawlSession, doRequest DoRequestFunc) error {
 			// Delay if the user has asked for it
 			if s.Options.Options.Delay > 0 {
 				time.Sleep(time.Duration(s.Options.Options.Delay) * time.Second)
+			}
+
+			if s.Options.Options.MaxDomainPages > 0 {
+				counter := s.DomainCounter(crawlSession.Hostname)
+				if counter.Add(1) > int64(s.Options.Options.MaxDomainPages) {
+					return
+				}
 			}
 
 			resp, err := doRequest(crawlSession, req)

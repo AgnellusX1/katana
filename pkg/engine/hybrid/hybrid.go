@@ -171,6 +171,13 @@ func (c *Crawler) Do(crawlSession *common.CrawlSession, doRequest common.DoReque
 			time.Sleep(time.Duration(c.Options.Options.Delay) * time.Second)
 		}
 
+		if c.Options.Options.MaxDomainPages > 0 {
+			counter := c.DomainCounter(crawlSession.Hostname)
+			if counter.Add(1) > int64(c.Options.Options.MaxDomainPages) {
+				continue
+			}
+		}
+
 		resp, err := doRequest(crawlSession, req)
 
 		if inScope {
