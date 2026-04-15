@@ -79,12 +79,19 @@ docker run projectdiscovery/katana:latest -u https://tesla.com -system-chrome -h
 
 ```sh
 sudo apt update
+sudo apt install zip curl wget git snapd
 sudo snap refresh
-sudo apt install zip curl wget git
 sudo snap install golang --classic
-wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - 
-sudo sh -c 'echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
-sudo apt update 
+
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://dl.google.com/linux/linux_signing_key.pub \
+  | sudo gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg
+
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] \
+  http://dl.google.com/linux/chrome/deb/ stable main" \
+  | sudo tee /etc/apt/sources.list.d/google-chrome.list > /dev/null
+
+sudo apt update
 sudo apt install google-chrome-stable
 ```
 
