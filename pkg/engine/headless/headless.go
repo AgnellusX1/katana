@@ -173,6 +173,7 @@ func (h *Headless) Crawl(URL string) error {
 		EnableDiagnostics:   h.options.Options.EnableDiagnostics,
 		Trace:               h.options.Options.EnableDiagnostics,
 		CookieConsentBypass: true,
+		UserArguments:      h.options.Options.ParseHeadlessOptionalArguments(),
 	}
 
 	if provider := h.options.Options.CaptchaSolverProvider; provider != "" {
