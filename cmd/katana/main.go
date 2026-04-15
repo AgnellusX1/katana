@@ -230,6 +230,8 @@ pipelines offering both headless and non-headless crawling.`)
 		flagSet.IntVarP(&options.Delay, "delay", "rd", 0, "request delay between each request in seconds"),
 		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum requests to send per second"),
 		flagSet.IntVarP(&options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute"),
+		flagSet.IntVarP(&options.HostRateLimit, "host-rate-limit", "hrl", 0, "maximum requests to send per second per host"),
+		flagSet.IntVarP(&options.HostRateLimitMinute, "host-rate-limit-minute", "hrlm", 0, "maximum number of requests to send per minute per host"),
 	)
 
 	flagSet.CreateGroup("update", "Update",

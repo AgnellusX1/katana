@@ -192,6 +192,8 @@ RATE-LIMIT:
    -rd, -delay int               request delay between each request in seconds
    -rl, -rate-limit int          maximum requests to send per second (default 150)
    -rlm, -rate-limit-minute int  maximum number of requests to send per minute
+   -hrl, -host-rate-limit int    maximum requests to send per second per host
+   -hrlm, -host-rate-limit-minute int  maximum number of requests to send per minute per host
 
 UPDATE:
    -up, -update                 update katana to latest version
@@ -954,7 +956,7 @@ katana -u https://tesla.com -p 20
 
 *`-rate-limit`*
 -----
-option to use to define max number of request can go out per second.
+Maximum requests per second, applied globally across all hosts.
 
 ```
 katana -u https://tesla.com -rl 100
@@ -962,10 +964,26 @@ katana -u https://tesla.com -rl 100
 
 *`-rate-limit-minute`*
 -----
-option to use to define max number of request can go out per minute.
+Maximum requests per minute, applied globally across all hosts.
 
 ```
 katana -u https://tesla.com -rlm 500
+```
+
+*`-host-rate-limit`*
+-----
+Maximum requests per second per host. Each host gets its own rate limit bucket, so a slow host won't throttle fast ones. Replaces the global rate limit when set. Katana also backs off automatically with exponential delay and jitter when a host returns 429 or 503.
+
+```console
+katana -u https://tesla.com -hrl 50
+```
+
+*`-host-rate-limit-minute`*
+-----
+Maximum requests per minute per host.
+
+```console
+katana -u https://tesla.com -hrlm 200
 ```
 
 Here is all long / short CLI options for rate limit control -
@@ -980,6 +998,8 @@ RATE-LIMIT:
    -rd, -delay int               request delay between each request in seconds
    -rl, -rate-limit int          maximum requests to send per second (default 150)
    -rlm, -rate-limit-minute int  maximum number of requests to send per minute
+   -hrl, -host-rate-limit int    maximum requests to send per second per host
+   -hrlm, -host-rate-limit-minute int  maximum number of requests to send per minute per host
 ```
 
 ## Output
