@@ -206,6 +206,8 @@ type Options struct {
 	KnowledgeBase bool
 	// FilterPageType filters results by page type
 	FilterPageType goflags.StringSlice
+	// AuthCredentials holds username:password for automatic login
+	AuthCredentials string
 	// MaxDomainPages is the maximum number of pages to crawl per domain (0 = unlimited)
 	MaxDomainPages int
 }

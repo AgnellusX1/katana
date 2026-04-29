@@ -8,10 +8,12 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/adrianbrad/queue"
+	"github.com/happyhackingspace/dit"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/go-rod/rod/lib/utils"
@@ -36,6 +38,7 @@ type Crawler struct {
 	simhashOracle *simhash.Oracle
 	uniqueActions map[string]struct{}
 	diagnostics   diagnostics.Writer
+	loggedIn      bool
 }
 
 type Options struct {
@@ -70,6 +73,10 @@ type Options struct {
 	ChromeUser      *user.User
 	CaptchaHandler  *captcha.Handler
 	UserArguments   map[string]string
+
+	AuthUsername   string
+	AuthPassword   string
+	DitClassifier *dit.Classifier
 }
 
 var domNormalizer *normalizer.Normalizer
@@ -373,6 +380,16 @@ func (c *Crawler) crawlFn(ctx context.Context, action *types.Action, page *brows
 		}
 	}
 
+	if !c.loggedIn && c.options.AuthUsername != "" && c.options.DitClassifier != nil {
+		if info, err := page.Info(); err == nil && (c.options.ScopeValidator == nil || c.options.ScopeValidator(info.URL)) {
+			if html, htmlErr := page.HTML(); htmlErr == nil {
+				if c.tryAutoLogin(page, html) {
+					_ = page.WaitPageLoadHeurisitics()
+				}
+			}
+		}
+	}
+
 	pageState, err := newPageState(page, action)
 	if err != nil {
 		return err
@@ -519,6 +536,78 @@ func (c *Crawler) executeCrawlStateAction(action *types.Action, page *browser.Br
 		return fmt.Errorf("unknown action type: %v", action.Type)
 	}
 	return nil
+}
+
+func (c *Crawler) tryAutoLogin(page *browser.BrowserPage, html string) bool {
+	pageResult, err := c.options.DitClassifier.ExtractPageType(html)
+	if err != nil || pageResult == nil {
+		return false
+	}
+
+	for _, form := range pageResult.Forms {
+		if form.Type != "login" {
+			continue
+		}
+
+		pageURL := ""
+		if info, err := page.Info(); err == nil {
+			pageURL = info.URL
+		}
+		c.logger.Info("Login form detected, attempting auto-login",
+			slog.String("url", pageURL),
+		)
+
+		filled := false
+		for fieldName, fieldType := range form.Fields {
+			var value string
+			switch fieldType {
+			case "password":
+				value = c.options.AuthPassword
+			default:
+				value = c.options.AuthUsername
+			}
+
+			escapedName := strings.ReplaceAll(fieldName, `\`, `\\`)
+			escapedName = strings.ReplaceAll(escapedName, `'`, `\'`)
+			el, err := page.Element("input[name='" + escapedName + "']")
+			if err != nil {
+				c.logger.Debug("Could not find login field", slog.String("field", fieldName))
+				continue
+			}
+			if err := el.Input(value); err != nil {
+				c.logger.Debug("Could not fill login field", slog.String("field", fieldName))
+				continue
+			}
+			filled = true
+		}
+
+		if !filled {
+			continue
+		}
+
+		if submitted := c.submitLoginForm(page); submitted {
+			c.loggedIn = true
+			c.logger.Info("Auto-login submitted successfully")
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Crawler) submitLoginForm(page *browser.BrowserPage) bool {
+	selectors := []string{
+		"form button[type='submit']",
+		"form input[type='submit']",
+		"form button:not([type])",
+	}
+	for _, sel := range selectors {
+		if el, err := page.Element(sel); err == nil {
+			if err := el.Click(proto.InputMouseButtonLeft, 1); err == nil {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 var logoutPattern = regexp.MustCompile(`(?i)(log[\s-]?out|sign[\s-]?out|signout|deconnexion|cerrar[\s-]?sesion|sair|abmelden|uitloggen|ausloggen|exit|disconnect|terminate|end[\s-]?session|salir|desconectar|afmelden|wyloguj|logout|sign[\s-]?off)`)

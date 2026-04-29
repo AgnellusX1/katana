@@ -158,7 +158,7 @@ func NewCrawlerOptions(options *Options) (*CrawlerOptions, error) {
 		crawlerOptions.Wappalyzer = wappalyze
 	}
 
-	if len(options.FilterPageType) > 0 {
+	if len(options.FilterPageType) > 0 || options.AuthCredentials != "" {
 		options.KnowledgeBase = true
 	}
 	if options.KnowledgeBase {
